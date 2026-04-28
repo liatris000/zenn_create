@@ -3,8 +3,7 @@ title: "Claude Code Hooksで開発フローを自動化した話"
 emoji: "🪝"
 type: "tech"
 topics: ["claude", "claudecode", "ai", "automation", "shellscript"]
-published: true
-published_at: "2026-04-29 07:00"
+published: false
 cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20260428-claude-code-hooks_thumbnail.png
 ---
 
