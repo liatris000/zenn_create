@@ -1,6 +1,30 @@
-node_modules/
-.DS_Store
+# 環境変数・機密情報
 .env
-.env.local
+.env.*
+!.env.example
+secrets/
+credentials/
+*.pem
+*.key
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node.js
+node_modules/
+npm-debug.log*
+
+# エディタ
+.vscode/settings.json
+.idea/
+
+# ビルド・キャッシュ
+dist/
+.cache/
 *.log
+
+# 一時ファイル
 /tmp/
+*.tmp
+*.bak
