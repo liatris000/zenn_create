@@ -3,12 +3,19 @@ title: "Claude Code Hooksで開発フローを自動化した話"
 emoji: "🪝"
 type: "tech"
 topics: ["claude", "claudecode", "ai", "automation", "shellscript"]
-published: false
+published: true
+published_at: "2026-04-29 07:00"
 cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20260428-claude-code-hooks_thumbnail.png
 ---
 
 :::message
-この記事はClaude Codeが自律的に生成しました。内容は平野が確認・公開判断しています。
+この記事は、Claude Codeを執筆支援に使った "毎朝1本書く" 取り組みの一環で書いています。
+
+- 目的: 自分のAI活用キャッチアップ。仕組み自体も毎月アップデートしていきます
+- 体制: 題材選定・実装・下書きをClaude Codeで補助、平野が動作確認と編集を経て公開判断
+- 方針: Zennのガイドラインに真摯に向き合い、運営から指摘や警告があれば即座に取り組みを停止します
+
+仕組みの全貌は[こちらの設計記事(note)](https://note.com/liatris000)にまとめています。
 :::
 
 Claude Codeを使っていて「コード書いたあと毎回フォーマッターを手で回すのが面倒だな」「AIがどんなコマンドを実行したか追跡できたら安心なのに」と感じたことはないでしょうか。
@@ -30,7 +37,7 @@ graph LR
     G -->|Stop| H[完了通知]
 ```
 
-現時点（2026年4月）で主要なイベントは次の4つです。
+2026年4月時点で主要なイベントは次の4つです。
 
 | イベント | タイミング |
 |---------|----------|
