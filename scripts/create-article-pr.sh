@@ -46,8 +46,8 @@ if [[ -z "${TOKEN}" ]]; then
   exit 1
 fi
 
-GITHUB_USER="liatris000"
-REPO_NAME="zenn_create"
+GITHUB_USER="${GITHUB_USER:-liatris000}"
+REPO_NAME="${ZENN_REPO_NAME:-zenn_create}"
 
 # slugを検証
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
