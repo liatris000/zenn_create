@@ -35,7 +35,7 @@ if [[ -z "${TOKEN}" ]]; then
   exit 1
 fi
 
-GITHUB_USER="liatris000"
+GITHUB_USER="${GITHUB_USER:-liatris000}"
 
 if [[ ! -d "${LOCAL_DIR}" ]]; then
   echo "❌ ローカルディレクトリが存在しません: ${LOCAL_DIR}" >&2

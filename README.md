@@ -45,6 +45,15 @@ npx zenn preview   # http://localhost:8000 で確認
 - frontmatter の `published: true` + `published_at: "YYYY-MM-DD HH:MM"` で予約公開
 - コミットメッセージに `[ci skip]` を含めるとデプロイがスキップされる (通常使わない)
 
+## License
+
+このリポジトリは2種類のライセンスを適用しています:
+
+- **scripts / templates / 設定ファイル**: MIT License
+- **記事コンテンツ (articles/, images/, books/)**: All Rights Reserved (無断転載・改変を禁じます)
+
+詳細は [LICENSE](./LICENSE) を参照してください。
+
 ## 関連リンク
 
 - Zenn: https://zenn.dev/liatris

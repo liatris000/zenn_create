@@ -45,12 +45,12 @@ cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/image
 - `[ci skip]` をコミットメッセージに含めない（Zennデプロイがスキップされる）
 - mainブランチへの直push禁止。記事追加は必ずPRで
 - `published_at` はダブルクオート付き、JST時刻で記述
-- 機密ファイル(`.env`, `secrets.json` 等)は `.claude/settings.json` でブロックされている
+- 機密ファイルへの編集・読み取りは禁止 (権限設定で別途保護されている)
 
 ## やってはいけない
 
-- `.env` の編集・読み取り
-- `secrets/`, `credentials/` 配下へのアクセス
+- 機密情報を含むファイル (環境変数ファイル、認証情報、秘密鍵等) の編集・読み取り
+- 機密情報を含むディレクトリへのアクセス
 - 既存記事の削除や大幅な書き換え（タイポ修正等の軽微な編集はOK）
 - frontmatter の `slug` 相当部分（ファイル名）の変更
 
