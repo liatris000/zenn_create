@@ -1,19 +1,29 @@
 {
   "name": "zenn_create",
   "version": "1.0.0",
-  "description": "",
+  "description": "Liatris Zenn記事管理リポジトリ",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "preview": "zenn preview",
+    "preview:port": "zenn preview --port 3000",
+    "thumbnail": "bash scripts/generate-thumbnail.sh",
+    "validate-slug": "bash scripts/validate-slug.sh"
   },
   "repository": {
     "type": "git",
-    "url": "http://local_proxy@127.0.0.1:33855/git/liatris000/zenn_create"
+    "url": "https://github.com/liatris000/zenn_create.git"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "zenn",
+    "claude-code",
+    "automation"
+  ],
+  "author": "liatris",
   "license": "ISC",
   "dependencies": {
     "zenn-cli": "^0.4.7"
+  },
+  "devDependencies": {
+    "puppeteer": "^24.0.0"
   }
 }
