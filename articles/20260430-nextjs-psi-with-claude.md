@@ -11,7 +11,7 @@ cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/image
 
 Next.js で構築した EC サイトの PageSpeed Insights スコアが、機能追加のたびに少しずつ下がっていた。LCP と TBT がいずれも Lighthouse の「要改善」判定を超えていた。「後でまとめて直す」を繰り返した結果だ。
 
-手動で Lighthouse を回す作業は地味にコストがかかる。URL を開いて、スコアを読んで、「Opportunities」を確認して、コードに戻る。この往復が面倒で後回しになっていた。Claude Code に PSI の MCP サーバーを接続したら、スコアの取得から改善指示、コード修正まで一気通貫でできることが分かった。
+手動で Lighthouse を回す作業は地味にコストがかかる。URL を開いて、スコアを読んで、「Opportunities」を確認して、コードに戻る。この往復が面倒で後回しになっていた。MCP サーバーを介すと AI が外部 API の計測機能を直接呼べる形にできる、というのを知って試してみた。Claude Code に PSI の MCP サーバーを接続したら、スコアの取得から改善指示、コード修正まで一気通貫でできることが分かった。
 
 ## PSI MCP とセットアップ
 
@@ -35,6 +35,17 @@ Claude Code を再起動すると `pagespeed` ツールが有効になる。
 
 ## 改善の進め方
 
+```mermaid
+flowchart TD
+    A[PSI スコア取得] --> B{Performance < 90?}
+    B -- No --> G[完了]
+    B -- Yes --> C[Opportunities 一覧化]
+    C --> D[影響が大きい 1 項目を選択]
+    D --> E[Claude Code が修正を実装]
+    E --> F[再計測]
+    F --> B
+```
+
 「Opportunities を全部直して」と一度に指示すると修正が干渉し合う場合がある。1 項目ずつ修正して再計測するループを回した方が、何が効いたかが明確になる。変数を 1 つに絞って効果を検証する A/B テストの基本と同じ構造だ。
 
 ## 主な改善実装
@@ -44,6 +55,10 @@ Claude Code を再起動すると `pagespeed` ツールが有効になる。
 `<img>` を `next/image` + `priority` に変えると `<link rel="preload">` が生成され LCP 要素の発見が早くなる。最初は `sizes` を省略していたが、モバイルで不必要に大きい画像を送り続けていたため追加した:
 
 ```tsx:components/HeroSection.tsx
+// Before
+<img src="/hero.jpg" alt="hero" style={{ width: '100%' }} />
+
+// After
 import Image from 'next/image'
 <Image src="/hero.jpg" alt="hero" width={1200} height={600}
   priority sizes="(max-width: 768px) 100vw, 1200px" />
@@ -52,6 +67,11 @@ import Image from 'next/image'
 ### フォント（FCP・LCP）
 
 Google Fonts を `<link>` で読み込むとレンダリングブロッキングが発生する。`next/font` に切り替えるとセルフホスティングされ外部リクエストが消える:
+
+```html
+<!-- Before: _document.tsx で <link> 直書き -->
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP&display=swap" rel="stylesheet">
+```
 
 ```tsx:app/layout.tsx
 import { Noto_Sans_JP } from 'next/font/google'
