@@ -69,6 +69,47 @@ npx zenn preview
 # http://localhost:8000 で確認
 ```
 
+## 3日サイクル運用
+
+このリポジトリは **3日サイクル × 週1本投稿** で運用される。
+詳細は [`docs/cycle-overview.md`](./docs/cycle-overview.md) を参照。
+
+各日の作業手順は skills として整備されている:
+
+- Day 1(月): [`.claude/skills/day1-kickoff/SKILL.md`](./.claude/skills/day1-kickoff/SKILL.md)
+- Day 2(火): [`.claude/skills/day2-implementation/SKILL.md`](./.claude/skills/day2-implementation/SKILL.md)
+- Day 3(水): [`.claude/skills/day3-finalize/SKILL.md`](./.claude/skills/day3-finalize/SKILL.md)
+
+運用上のトラブルシューティング・メンテナンスは [`docs/operations.md`](./docs/operations.md) を参照。
+
+## 業務プロフィール参照
+
+`business-profile/` ディレクトリは `liatris-business-profile`(Private)の submodule。
+判断ロジックの根拠として参照する。
+
+| 判断したいこと | 参照先 |
+|---|---|
+| 公開していい題材か | `business-profile/policies/disclosure-rules.md` |
+| 業務プールの種 | `business-profile/companies/<X>/README.md` |
+| 題材選定ロジック | `business-profile/companies/personal/ai-articles/topic-selection.md` |
+| 副業申請状態 | `business-profile/policies/disclosure-rules.md`(横断テーブル) |
+
+## 情報漏れ対策(必須)
+
+このリポジトリは **Public**。以下を必ず守る:
+
+- commit message に題材の固有名詞・業務コンテクストを出さない
+- 記事本文に業務文脈・関係者・取引先・パートナー・提携先を出さない
+- 本名「平野翔斗」を記事本文内に出さない(プロフィール表示は OK)
+- フィクションの数値(未計測の改善値等)を書かない
+
+詳細は [`docs/cycle-overview.md`](./docs/cycle-overview.md) の「情報漏れ対策」セクション。
+
+## 文体ガイド
+
+記事の文体・構成は [`docs/article-style-guide.md`](./docs/article-style-guide.md) で定義。
+記事生成時は [`.claude/skills/article-writing/SKILL.md`](./.claude/skills/article-writing/SKILL.md) を参照。
+
 ## 関連リンク
 
 - 設計記事(note): （公開後にここにURLを追記）
