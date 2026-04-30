@@ -1,5 +1,5 @@
 ---
-title: "PSI MCP × Claude Code で Core Web Vitals を全指標改善した"
+title: "PSI MCP × Claude Code で Core Web Vitals を改善する"
 emoji: "⚡"
 type: "tech"
 topics: ["claudecode", "nextjs", "mcp", "performance"]
