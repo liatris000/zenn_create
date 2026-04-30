@@ -77,6 +77,16 @@ trap 'rm -rf "${WORK_DIR}"' EXIT
 cp -R "${LOCAL_DIR}/." "${WORK_DIR}/"
 cd "${WORK_DIR}"
 
+# _claude_template/ → .claude/ に展開
+# Claude が .claude/ パスに直接書けない仕様への対処
+if [[ -d "${WORK_DIR}/_claude_template" ]]; then
+  echo "📁 _claude_template/ を .claude/ に展開中..."
+  mkdir -p "${WORK_DIR}/.claude"
+  cp -R "${WORK_DIR}/_claude_template/." "${WORK_DIR}/.claude/"
+  rm -rf "${WORK_DIR}/_claude_template"
+  echo "✅ .claude/ に配置完了"
+fi
+
 git init -q
 git checkout -q -b main 2>/dev/null || git checkout -q main
 git remote add origin "https://${TOKEN}@github.com/${GITHUB_USER}/${REPO_NAME}.git"
