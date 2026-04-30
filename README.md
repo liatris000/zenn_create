@@ -40,6 +40,23 @@ npm ci
 npx zenn preview   # http://localhost:8000 で確認
 ```
 
+## Claude Code Web Routine 用 setup
+
+このリポジトリは Claude Code Web の Routine から起動される。Routine 環境設定で:
+
+- **Setup script**: 環境キャッシュ用(npm ci + Chromium ダウンロード等の重い処理)
+  - cwd は `/home/user`、リポジトリは `/home/user/zenn_create` に clone 済み
+  - スクリプト内で `cd /home/user/zenn_create` してから操作
+- **Environment variables**: GITHUB_TOKEN, CHATWORK_API_TOKEN, CHATWORK_ROOM_ID, CHATWORK_ACCOUNT_ID, DESIGN_ARTICLE_URL
+
+setup script の内容は別途管理(GitHub には含めない、Routine 環境固有のため)。
+
+毎セッション実行される処理(submodule 同期、作業ディレクトリ初期化等)は
+`.claude/settings.json` の SessionStart hook で実行され、`scripts/session-start.sh` が呼ばれる。
+hook の cwd はリポジトリルート(`/home/user/zenn_create`)。
+
+ローカル開発時は `CLAUDE_CODE_REMOTE` 環境変数が未設定なので、SessionStart hook は何もしない。
+
 ## Routine (3日サイクル運用)
 
 `zenn-day1` / `zenn-day2` / `zenn-day3` の 3 本のルーティンが平日朝に順次起動し、週 1 本のペースで記事を生成する。詳細は [`docs/cycle-overview.md`](./docs/cycle-overview.md) を参照。
