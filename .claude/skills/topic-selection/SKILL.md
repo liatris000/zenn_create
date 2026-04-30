@@ -135,6 +135,16 @@ skill の出力として、以下のフォーマットを Step 6 (PR 作成) に
 
 候補が `disclosure: careful` の場合、自動採用しても OK だが、PR 本文の冒頭に **「⚠️ disclosure: careful 題材につき、Liatris レビュー必須」** と明記する。
 
+## `.claude/` 配下のファイル生成を伴う題材の扱い
+
+題材の成果物に `.claude/mcp.json` 等、`.claude/` 配下のファイル生成が含まれる場合は、以下を必ず守る:
+
+- 採用判定自体は通常通り(★★★/★★ 判定でブロックしない)
+- ただし PR 本文の実装方針セクションに **「成果物に `.claude/` 配下のファイル含む → publish-artifact.sh の `_claude_template/` 機構を使う」** と明記すること
+- Day 2 skill の Step 3 で `_claude_template/` への配置が指示されているため、それに従う
+
+これにより、Claude Code の `.claude/` 書き込み保護と Routine 自動化が両立する。
+
 ## 候補リスト公開(必須)
 
 採用判定の前に、検討した候補すべてを列挙して PR 本文に記載する。これにより Liatris レビュー時に「なぜこれが選ばれたか」「他にどんな候補があったか」が分かるようになる。
