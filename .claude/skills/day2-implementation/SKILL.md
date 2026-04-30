@@ -20,11 +20,17 @@ description: Zenn 記事生成の Day 2(火曜朝)の作業手順。前日の WI
 cd ~/zenn_create
 git pull origin main -q
 
-# 直近の article/* ブランチを探す
-LATEST_BRANCH=$(git branch -r | grep "origin/article/" | sort | tail -1 | sed 's|origin/||' | xargs)
+# Day 1 で作成された [Day 1/3 WIP] PR を PR タイトルで検索
+# (Routine 環境では Claude Code が自動的に claude/* ブランチを切るため、
+#  ブランチ名前提の検索ではなく PR タイトル前提の検索にする)
+PR_INFO=$(gh pr list --state open --search '"[Day 1/3 WIP]" in:title' --json number,headRefName,url --limit 1)
+PR_NUMBER=$(echo "${PR_INFO}" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d[0]['number'] if d else '')")
+LATEST_BRANCH=$(echo "${PR_INFO}" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d[0]['headRefName'] if d else '')")
+PR_URL=$(echo "${PR_INFO}" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d[0]['url'] if d else '')")
+export PR_URL
 ```
 
-PR が見つからない場合(月曜サボった等):
+PR が見つからない場合(月曜サボった、Liatris が火曜朝に PR を close した等):
 
 - **何もせず終了する**(その週は中止)
 - Chatwork に「Day 2: 対象 PR が見つからないためスキップ」と通知
