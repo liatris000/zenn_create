@@ -88,8 +88,7 @@ git add -A
 if git diff --cached --quiet; then
   echo "ℹ️  push対象なし"
 else
-  git -c user.name="Liatris Bot" -c user.email="liatris-bot@users.noreply.github.com" \
-    commit -q -m "初回コミット: ${ARTICLE_TITLE}"
+  git commit -q -m "初回コミット: ${ARTICLE_TITLE}"
   git push -q origin main
   echo "✅ push完了"
 fi
