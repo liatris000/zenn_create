@@ -20,7 +20,19 @@ description: Zenn 記事生成の Day 3(水曜朝)の作業手順。Day 2 のフ
 cd ~/zenn_create
 git pull origin main -q
 
-LATEST_BRANCH=$(git branch -r | grep "origin/article/" | sort | tail -1 | sed 's|origin/||' | xargs)
+# Day 2 で更新された [Day 2/3 WIP] PR を PR タイトルで検索
+PR_INFO=$(gh pr list --state open --search '"[Day 2/3 WIP]" in:title' --json number,headRefName,url --limit 1)
+PR_NUMBER=$(echo "${PR_INFO}" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d[0]['number'] if d else '')")
+LATEST_BRANCH=$(echo "${PR_INFO}" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d[0]['headRefName'] if d else '')")
+PR_URL=$(echo "${PR_INFO}" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d[0]['url'] if d else '')")
+export PR_URL
+
+# PR が見つからなければその週は中止
+if [ -z "${PR_NUMBER}" ]; then
+  echo "Day 3: 対象 PR が見つからないためスキップ"
+  exit 0
+fi
+
 git checkout "${LATEST_BRANCH}"
 git pull origin "${LATEST_BRANCH}" -q
 ```
@@ -28,7 +40,7 @@ git pull origin "${LATEST_BRANCH}" -q
 PR コメントを確認:
 
 ```bash
-gh pr view "${PR_URL}" --comments
+gh pr view "${PR_NUMBER}" --comments
 ```
 
 Liatris のコメントがあれば、その内容を踏まえて反映する。
