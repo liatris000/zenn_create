@@ -27,21 +27,34 @@ echo "========================================"
 # 1. 環境変数チェック
 # ========================================
 echo ""
-echo "[1/4] 環境変数チェック..."
+echo "[1/5] 環境変数チェック..."
 
 if [ -z "${GITHUB_TOKEN:-}" ]; then
   echo "  ⚠️ GITHUB_TOKEN 未設定。Private 操作 (clone/push/submodule) はスキップされる可能性"
 else
   echo "  ✅ GITHUB_TOKEN 検出"
-  # Private submodule にトークン認証で透過アクセスするための url 書き換え
-  git config --global url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
 fi
 
 # ========================================
-# 2. zenn_create リポジトリ準備
+# 2. Git 設定 (Private リポジトリへのトークン認証)
 # ========================================
 echo ""
-echo "[2/4] zenn_create リポジトリ準備..."
+echo "[2/5] Git 設定..."
+
+if [ -n "${GITHUB_TOKEN:-}" ]; then
+  # Private リポ (zenn_create / business-profile submodule) にトークン認証で
+  # 透過アクセスするための url.insteadOf 設定
+  git config --global url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
+  echo "  ✅ url.insteadOf 設定完了 (https://github.com/ → トークン付き URL)"
+else
+  echo "  ⏭️  GITHUB_TOKEN なしのため url.insteadOf 設定スキップ"
+fi
+
+# ========================================
+# 3. zenn_create リポジトリ準備
+# ========================================
+echo ""
+echo "[3/5] zenn_create リポジトリ準備..."
 
 if [ -d "${ZENN_REPO_DIR}/.git" ]; then
   cd "${ZENN_REPO_DIR}"
@@ -59,21 +72,28 @@ else
 fi
 
 # ========================================
-# 3. business-profile submodule 同期
+# 4. business-profile submodule 同期
 # ========================================
 echo ""
-echo "[3/4] business-profile submodule 同期..."
+echo "[4/5] business-profile submodule 同期..."
 
 if [ ! -f "${ZENN_REPO_DIR}/.gitmodules" ]; then
-  echo "  ℹ️ .gitmodules が存在しない。submodule 未登録のためスキップ"
-  echo "      (初回登録は Liatris のターミナルで以下を実行:"
-  echo "       git submodule add https://github.com/liatris000/liatris-business-profile.git ${SUBMODULE_PATH})"
+  echo "  ⚠️⚠️⚠️ 致命的状態: .gitmodules が存在しません ⚠️⚠️⚠️"
+  echo "      business-profile submodule が未登録のため、Day 1 の題材選定が実行できません。"
+  echo "      Liatris は以下のコマンドで submodule を登録してください:"
+  echo ""
+  echo "        git submodule add https://github.com/liatris000/liatris-business-profile.git ${SUBMODULE_PATH}"
+  echo "        git config -f .gitmodules submodule.${SUBMODULE_PATH}.branch main"
+  echo "        git add .gitmodules ${SUBMODULE_PATH} && git commit -m \"chore: add business-profile submodule\""
+  echo ""
+  echo "      登録なしでは Day 1 / Day 2 / Day 3 の skill が起動条件を満たしません。"
 elif [ -z "${GITHUB_TOKEN:-}" ]; then
-  echo "  ⚠️ GITHUB_TOKEN 未設定のため submodule 同期スキップ"
+  echo "  ⚠️ GITHUB_TOKEN 未設定のため submodule 同期スキップ (セッション内で再試行可)"
 else
   # 初回 init (実体未取得の場合のみ)
   if [ ! -d "${ZENN_REPO_DIR}/${SUBMODULE_PATH}/.git" ] && [ ! -f "${ZENN_REPO_DIR}/${SUBMODULE_PATH}/.git" ]; then
-    git submodule update --init --recursive -q || echo "  ⚠️ submodule init 失敗"
+    git submodule update --init --recursive -q || \
+      echo "  ⚠️ submodule init 失敗 (セッション内で再試行可)"
   fi
 
   # main の最新に追従 (.gitmodules で branch=main 設定がある前提)
@@ -84,8 +104,8 @@ else
 fi
 
 # ========================================
-# 4. 完了
+# 5. 完了
 # ========================================
 echo ""
-echo "[4/4] セットアップ完了"
+echo "[5/5] セットアップ完了"
 echo ""
