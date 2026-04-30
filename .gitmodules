@@ -1,0 +1,4 @@
+[submodule "business-profile"]
+	path = business-profile
+	url = https://github.com/liatris000/liatris-business-profile.git
+	branch = main

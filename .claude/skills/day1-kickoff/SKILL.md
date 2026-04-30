@@ -31,6 +31,40 @@ git log -1 --format="%H %s"
 cd ~/zenn_create
 ```
 
+#### Step 1.5: business-profile submodule 存在チェック (必須ゲート)
+
+題材選定は `business-profile/` の中身を参照して行うため、submodule が存在しない場合は **Day 1 を続行できない**。以下のチェックを必ず実行する:
+
+```bash
+# .gitmodules が存在するか
+test -f ~/zenn_create/.gitmodules || { echo "FATAL: .gitmodules がありません"; exit 1; }
+
+# business-profile/ が空でないか (実体が取得済みか)
+test -n "$(ls -A ~/zenn_create/business-profile 2>/dev/null)" || { echo "FATAL: business-profile/ が空です"; exit 1; }
+
+# 中身が読めるか (代表ファイル)
+test -f ~/zenn_create/business-profile/policies/disclosure-rules.md || { echo "FATAL: 業務プロフィールの代表ファイルが見えません"; exit 1; }
+```
+
+いずれかが NG の場合は Step 2 に進まず、Liatris に submodule 登録を依頼して **Day 1 を中止**する:
+
+```
+🛑 business-profile submodule が利用できないため Day 1 を中止します。
+以下を実行してください:
+
+  cd ~/zenn_create
+  git submodule add https://github.com/liatris000/liatris-business-profile.git business-profile
+  git config -f .gitmodules submodule.business-profile.branch main
+  git add .gitmodules business-profile
+  git commit -m "chore: add business-profile submodule"
+  git push
+
+または scripts/setup-claude-code.sh を再実行して同期してください。
+登録完了後に Day 1 を再起動してください。
+```
+
+このチェックを合格しない限り Step 2(題材選定)に進んではならない。
+
 ### Step 2: 題材選定
 
 `topic-selection` skill を発動して題材候補を選ぶ。
@@ -97,8 +131,9 @@ Day 1 完了 (PR: ${PR_URL}, 題材: ${ARTICLE_TOPIC})
 
 ## 失敗時のフォールバック
 
+- **submodule 未登録 (`.gitmodules` 不在 / `business-profile/` が空)** → Liatris に登録依頼して **Day 1 を中止**(Step 1.5 参照)
 - 題材が見つからない → Liatris 確認 →「今週は中止」or「kubell 領域の一般化ノウハウ」
-- submodule 同期失敗 → `scripts/setup-claude-code.sh` 再実行
+- submodule 同期失敗 (登録済みだが取得失敗) → `scripts/setup-claude-code.sh` 再実行
 - slug 検証失敗 → `THEME_SLUG` を 12〜50 文字、英小文字 / 数字 / ハイフン / アンダースコアに修正
 
 ## 絶対 NG(Day 1 特有)

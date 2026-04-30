@@ -47,6 +47,25 @@
 - 対処: `npx puppeteer browsers install chrome` で再インストール
 - それでもダメなら `templates/` の HTML を直接ブラウザで開いて手動スクショ
 
+### submodule が未登録の場合(致命的)
+
+- **症状**: Day 1 起動時に題材選定できず、`day1-kickoff` skill の Step 1.5 で中止される。`scripts/setup-claude-code.sh` の出力に「⚠️⚠️⚠️ 致命的状態: .gitmodules が存在しません」と表示される
+- **原因**: `business-profile/` submodule がリポジトリに登録されていない
+- **対処**: Liatris のローカル(または Claude Code セッション内)で以下を実行:
+  ```bash
+  cd ~/zenn_create
+  git checkout -b chore/integrate-business-profile-submodule
+  git submodule add https://github.com/liatris000/liatris-business-profile.git business-profile
+  git config -f .gitmodules submodule.business-profile.branch main
+  git add .gitmodules business-profile
+  git commit -m "chore: add business-profile submodule"
+  git push -u origin chore/integrate-business-profile-submodule
+  # PR を作成してマージ
+  ```
+- **予防**:
+  - 新しい環境で Routine を初めて回す前に `scripts/setup-claude-code.sh` を実行し、出力に ⚠️ が出ていないか毎回確認する
+  - ⚠️ が出ているうちは Day 1 / Day 2 / Day 3 のいずれも完走できないので、submodule 登録を最優先で対応する
+
 ### submodule が古い状態のまま
 
 - Routine 起動時に `git submodule update --remote --merge` が走るはずだが、失敗した可能性
