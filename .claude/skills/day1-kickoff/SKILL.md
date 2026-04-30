@@ -10,7 +10,7 @@ description: Zenn 記事生成の Day 1(月曜朝)の作業手順。題材選定
 ## 前提
 
 - 月曜朝の Routine 起動を想定
-- `business-profile/` submodule が同期済み(`scripts/setup-claude-code.sh` で実行)
+- `business-profile/` submodule が同期済み(SessionStart hook `scripts/session-start.sh` で毎セッション同期される)
 - 前週の PR がマージ済みで、新サイクルを始められる状態
 
 ## 作業手順
@@ -59,8 +59,8 @@ test -f ~/zenn_create/business-profile/policies/disclosure-rules.md || { echo "F
   git commit -m "chore: add business-profile submodule"
   git push
 
-または scripts/setup-claude-code.sh を再実行して同期してください。
-登録完了後に Day 1 を再起動してください。
+登録完了後に Day 1 を再起動してください。Routine 起動時に SessionStart hook
+(`scripts/session-start.sh`) が submodule を自動同期します。
 ```
 
 このチェックを合格しない限り Step 2(題材選定)に進んではならない。
@@ -152,7 +152,7 @@ Day 1 完了 (PR: ${PR_URL}, 題材: ${ARTICLE_TOPIC})
 
 - **submodule 未登録 (`.gitmodules` 不在 / `business-profile/` が空)** → Liatris に登録依頼して **Day 1 を中止**(Step 1.5 参照)
 - **題材が見つからない (★/△ のみまたは候補ゼロ)** → 自動中止。Chatwork に「今週は中止: 採用可能な候補がありません(★/△ のみ)」と通知して終了。Liatris の対話確認は求めない(ルーティン完走前提のため)。
-- submodule 同期失敗 (登録済みだが取得失敗) → `scripts/setup-claude-code.sh` 再実行
+- submodule 同期失敗 (登録済みだが取得失敗) → 手動で `git submodule update --remote --merge business-profile` を実行
 - slug 検証失敗 → `THEME_SLUG` を 12〜50 文字、英小文字 / 数字 / ハイフン / アンダースコアに修正
 
 ## 絶対 NG(Day 1 特有)

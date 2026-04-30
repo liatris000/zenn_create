@@ -19,11 +19,12 @@ zenn_create リポジトリで Day 1 の作業を実行してください。
 - 前週の PR がマージ済みで、新サイクルが開始可能な状態のはず
 
 # やること
-1. scripts/setup-claude-code.sh を実行して環境を整える
-2. .claude/skills/day1-kickoff/SKILL.md を読んで、その手順に従って作業する
-3. 題材選定では .claude/skills/topic-selection/SKILL.md を発動する
-4. 下書き作成では .claude/skills/article-writing/SKILL.md を発動する
-5. PR を [Day 1/3 WIP] タイトルで作成し、Chatwork に通知
+1. .claude/skills/day1-kickoff/SKILL.md を読んで、その手順に従って作業する
+2. 題材選定では .claude/skills/topic-selection/SKILL.md を発動する
+3. 下書き作成では .claude/skills/article-writing/SKILL.md を発動する
+4. PR を [Day 1/3 WIP] タイトルで作成し、Chatwork に通知
+
+注: 環境準備 (npm 依存関係 / Chromium) は Routine 環境設定の Setup script、submodule 同期等は SessionStart hook (scripts/session-start.sh) で自動実行される。
 
 # 重要なルール
 - 業務コンテクストを commit message / PR 本文に出さない
@@ -36,8 +37,8 @@ zenn_create リポジトリで Day 1 の作業を実行してください。
 「Day 1 完了 (PR: ${PR_URL}, 題材: ${ARTICLE_TOPIC}). 明日 Day 2 で実装を進めます。」
 
 # 失敗時
-- 題材が見つからない → Liatris に確認 →「今週は中止」or「kubell領域の一般化ノウハウ」
-- submodule 同期失敗 → scripts/setup-claude-code.sh を再実行
+- 題材が見つからない → 自動中止 (skill のロジックに従う)、Chatwork に通知
+- submodule 同期失敗 → 手動で `git submodule update --remote --merge business-profile` を実行
 - 3 回試行して失敗 → WIP コミットして停止し、Chatwork に状況を報告
 ```
 
@@ -54,11 +55,12 @@ zenn_create リポジトリで Day 2 の作業を実行してください。
 - PR が存在しない場合は「その週は中止」扱い、何もせず終了
 
 # やること
-1. scripts/setup-claude-code.sh を実行
-2. .claude/skills/day2-implementation/SKILL.md を読んで、その手順に従って作業する
-3. 記事本文の執筆では .claude/skills/article-writing/SKILL.md を発動する
-4. PR タイトルを [Day 2/3 WIP] に更新し、追記コミット
-5. Chatwork に「翌朝 Day 3 進行前にチェックお願いします」と通知
+1. .claude/skills/day2-implementation/SKILL.md を読んで、その手順に従って作業する
+2. 記事本文の執筆では .claude/skills/article-writing/SKILL.md を発動する
+3. PR タイトルを [Day 2/3 WIP] に更新し、追記コミット
+4. Chatwork に「翌朝 Day 3 進行前にチェックお願いします」と通知
+
+注: 環境準備は Routine 環境設定の Setup script、submodule 同期等は SessionStart hook で自動実行される。
 
 # 重要なルール
 - 新規 PR を作らない(Day 1 の PR に追記する)
@@ -88,13 +90,14 @@ zenn_create リポジトリで Day 3 の作業を実行してください。
 - PR が存在しない場合は「その週は中止」扱い、何もせず終了
 
 # やること
-1. scripts/setup-claude-code.sh を実行
-2. .claude/skills/day3-finalize/SKILL.md を読んで、その手順に従って作業する
-3. PR コメントの Liatris フィードバックを反映
-4. サムネ生成(scripts/generate-thumbnail.sh)
-5. .claude/skills/article-writing/SKILL.md のチェックリストでセルフレビュー
-6. PR タイトルを [Day 3/3 Ready for Review] に更新、Ready for Review に変更
-7. Liatris 向けチェックポイントを生成して Chatwork に送信
+1. .claude/skills/day3-finalize/SKILL.md を読んで、その手順に従って作業する
+2. PR コメントの Liatris フィードバックを反映
+3. サムネ生成(scripts/generate-thumbnail.sh)
+4. .claude/skills/article-writing/SKILL.md のチェックリストでセルフレビュー
+5. PR タイトルを [Day 3/3 Ready for Review] に更新、Ready for Review に変更
+6. Liatris 向けチェックポイントを生成して Chatwork に送信
+
+注: 環境準備は Routine 環境設定の Setup script、submodule 同期等は SessionStart hook で自動実行される。
 
 # 重要なルール
 - published: false のまま終わらせる(日曜夜の Liatris 手動マージで true にする)
