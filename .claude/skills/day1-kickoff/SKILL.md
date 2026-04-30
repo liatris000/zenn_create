@@ -68,7 +68,12 @@ test -f ~/zenn_create/business-profile/policies/disclosure-rules.md || { echo "F
 ### Step 2: 題材選定
 
 `topic-selection` skill を発動して題材候補を選ぶ。
-選定結果を Liatris に確認依頼。OK が出るまで先に進まない。
+**Liatris 対話確認待ちで停止しない**。`topic-selection` skill の「自動採用ロジック」に従って自動的に採用 / 中止を判断する:
+
+- ★★★ または ★★ 候補が見つかった場合 → 自動採用 → Step 3 に進む
+- ★ / △ のみ または候補ゼロ → Day 1 を自動中止 → 失敗時のフォールバックへ
+
+採用された題材情報(題材名、業務プール、判定、disclosure 等)は Step 6 (PR 本文) で使う。
 
 ### Step 3: 実装方針の決定
 
@@ -117,6 +122,16 @@ PR 本文には以下を明記:
 - 実装方針(技術スタック等)
 - 想定される実装規模
 - Day スケジュール
+- **採用判定の根拠**: topic-selection skill が出力した判定情報(★★★/★★、需要、供給、キャッチアップ価値、実装規模、公開可否、理由)を本文に貼る
+- **Liatris レビュー依頼文**: 以下を必ず PR 本文の冒頭に記載
+
+  > 🔍 **Liatris レビューお願いします(Day 2 起動前の火曜朝までに)**
+  >
+  > Day 1 ルーティンが自動採用した題材です。NG の場合はこの PR を close すれば、Day 2 ルーティンは PR を見つけられず自動的にスキップされます。
+  > 採用判定の根拠は下記の通り:
+
+- **disclosure: careful の場合の警告**: 採用題材が careful なら、上記レビュー依頼の直後に **「⚠️ disclosure: careful 題材につき、レビュー必須」** を追記
+- **★★ 自動採用の場合の警告**: 採用題材が ★★ なら、上記レビュー依頼の直後に **「⚠️ ★★ 自動採用のため、題材として弱い可能性あり」** を追記
 
 ### Step 7: Chatwork 通知
 
@@ -132,7 +147,7 @@ Day 1 完了 (PR: ${PR_URL}, 題材: ${ARTICLE_TOPIC})
 ## 失敗時のフォールバック
 
 - **submodule 未登録 (`.gitmodules` 不在 / `business-profile/` が空)** → Liatris に登録依頼して **Day 1 を中止**(Step 1.5 参照)
-- 題材が見つからない → Liatris 確認 →「今週は中止」or「kubell 領域の一般化ノウハウ」
+- **題材が見つからない (★/△ のみまたは候補ゼロ)** → 自動中止。Chatwork に「今週は中止: 採用可能な候補がありません(★/△ のみ)」と通知して終了。Liatris の対話確認は求めない(ルーティン完走前提のため)。
 - submodule 同期失敗 (登録済みだが取得失敗) → `scripts/setup-claude-code.sh` 再実行
 - slug 検証失敗 → `THEME_SLUG` を 12〜50 文字、英小文字 / 数字 / ハイフン / アンダースコアに修正
 
