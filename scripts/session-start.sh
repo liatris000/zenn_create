@@ -23,6 +23,16 @@ echo "  zenn_create session start"
 echo "════════════════════════════════════════"
 
 # ========================================
+# 0. submodule 認証用の URL 書き換え
+# ========================================
+# Claude Code Web 環境では git push は proxy 経由で自動認証されるが、
+# submodule の clone は proxy が効かないため明示的に GITHUB_TOKEN を使う必要がある。
+# Day 1 試運転で発見された問題への対処。
+if [ -n "${GITHUB_TOKEN:-}" ]; then
+  git config --global "url.https://${GITHUB_TOKEN}@github.com/.insteadOf" "https://github.com/" 2>/dev/null || true
+fi
+
+# ========================================
 # 1. business-profile submodule 同期
 # ========================================
 echo ""

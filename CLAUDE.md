@@ -33,11 +33,19 @@ title: "（30字以内）"
 emoji: "🤖"
 type: "tech"
 topics: ["claude", "claudecode", "ai", "automation"]  # 最大5つ、すべて小文字
+pattern: "implementation"  # implementation / comparison / concept / other のいずれか
 published: true
 published_at: "2026-04-29 07:00"  # ダブルクオート必須、JST、空白区切り
 cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/{slug}_thumbnail.png
 ---
 ```
+
+### `pattern` フィールドのルール
+
+- 値は `implementation` / `comparison` / `concept` / `other` の 4 種のみ
+- 各値の構成定義は [`docs/article-style-guide.md`](./docs/article-style-guide.md) の「構成パターン」セクション参照
+- Day 3 SKILL (`Step 5.1`) で直近 3 記事との履歴チェックに使われる(3 回連続で同じパターンになると警告)
+- 既存記事への後付けは可だが、`pattern` 値は記事の実構成と一致させる(ラベルだけ変えない)
 
 ## 守ること
 

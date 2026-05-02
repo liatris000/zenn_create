@@ -140,6 +140,21 @@ PR 本文には以下を明記:
 ### Step 7: Chatwork 通知
 
 `./scripts/notify-chatwork.sh` を実行して Day 1 完了を通知。
+Day 1 段階では成果物 URL や記事公開URLが存在しないため、空文字を渡す:
+
+```bash
+./scripts/notify-chatwork.sh \
+  "Day 1 完了: ${ARTICLE_TOPIC}" \
+  "${ARTICLE_TITLE}" \
+  "下書き段階" \
+  "未定 (来週月曜公開予定)" \
+  "" \
+  "" \
+  "${PR_URL}"
+```
+
+通知本文には自動的に「内容を確認してマージすると...」が含まれる(スクリプト側のフォーマット)。
+Day 1 段階の通知は Liatris の火曜朝レビュー依頼を兼ねるので、PR_URL が確実に通知に入っていれば OK。
 
 ### Step 8: 完了報告
 

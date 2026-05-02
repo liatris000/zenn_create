@@ -91,8 +91,7 @@ if git diff --cached --quiet; then
   exit 1
 fi
 
-git -c user.name="Liatris Bot" -c user.email="liatris-bot@users.noreply.github.com" \
-  commit -q -m "記事追加: ${ARTICLE_TITLE}"
+git commit -q -m "記事追加: ${ARTICLE_TITLE}"
 
 # pushにトークン埋め込み (履歴に残らないよう pushURL を一時的に上書き)
 PUSH_URL="https://${TOKEN}@github.com/${GITHUB_USER}/${REPO_NAME}.git"

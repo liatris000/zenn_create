@@ -67,6 +67,14 @@
   - 新しい環境で Routine を初めて回す前に、起動ログに SessionStart hook の ⚠️ が出ていないか確認する
   - ⚠️ が出ているうちは Day 1 / Day 2 / Day 3 のいずれも完走できないので、submodule 登録を最優先で対応する
 
+### `.claude/mcp.json` 等の書き込みでダイアログが出る(MCP 系題材で多発)
+
+- **症状**: Day 2 で `/tmp/zenn_artifact/.claude/mcp.json` を書こうとして「Claude にmcp.jsonの書き込みを許可しますか?」ダイアログが出て止まる
+- **原因**: Claude Code v2.1.121 以降、`.claude/` 配下への書き込みは保護対象として常に確認ダイアログを出す仕様(設定で抑制不可)
+- **対処(設計レベル)**: `_claude_template/` 機構を使う(scripts/publish-artifact.sh が自動展開)
+  - 詳細は .claude/skills/day2-implementation/SKILL.md の Step 3 参照
+- **手動運用時の対処**: Liatris が手動で「一度だけ許可」を押す(Routine 自動起動では不可)
+
 ### submodule が古い状態のまま
 
 - Routine 起動時に `git submodule update --remote --merge` が走るはずだが、失敗した可能性
