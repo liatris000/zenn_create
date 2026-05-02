@@ -91,6 +91,54 @@ export REPO_URL PAGES_URL
 
 ### Step 5: 記事本文の追記
 
+#### Step 5.0: 冒頭メッセージブロックの挿入
+
+本文を書き始める前に、`templates/article-header.md`(Zenn ガイドライン準拠の冒頭メッセージブロック: Claude Code 補助で書いていることの開示・運営からの指摘で停止する方針・設計記事 note へのリンク)を frontmatter 直後に必ず差し込む。`{{DESIGN_ARTICLE_URL}}` は環境変数 `DESIGN_ARTICLE_URL` で置換する。
+
+```bash
+# DESIGN_ARTICLE_URL が未設定の場合のフォールバック
+DESIGN_URL="${DESIGN_ARTICLE_URL:-https://note.com/liatris}"
+
+# テンプレを置換した結果を変数に格納
+HEADER_BLOCK=$(sed "s|{{DESIGN_ARTICLE_URL}}|${DESIGN_URL}|g" templates/article-header.md)
+
+# frontmatter (--- で挟まれた区間) の直後に挿入
+# python ワンライナーで安全に処理する (macOS / Linux 両対応)
+python3 - "${HEADER_BLOCK}" "articles/${ARTICLE_SLUG}.md" <<'PY'
+import sys, re
+header_block, article_path = sys.argv[1], sys.argv[2]
+
+with open(article_path, 'r', encoding='utf-8') as f:
+    content = f.read()
+
+# frontmatter (--- で挟まれた最初の区間) を抽出
+m = re.match(r'^(---\n.*?\n---\n)', content, re.DOTALL)
+if not m:
+    print("ERROR: frontmatter が見つかりません", file=sys.stderr)
+    sys.exit(1)
+
+frontmatter = m.group(1)
+body = content[len(frontmatter):]
+
+# 既に冒頭ブロックがある場合はスキップ (二重挿入防止)
+if ':::message' in body[:500] and 'Claude Code' in body[:500]:
+    print("INFO: 冒頭ブロックは既に挿入済み、スキップ")
+    sys.exit(0)
+
+# frontmatter + 空行 + 冒頭ブロック + 空行 + 既存本文
+new_content = frontmatter + '\n' + header_block.rstrip() + '\n\n' + body.lstrip()
+
+with open(article_path, 'w', encoding='utf-8') as f:
+    f.write(new_content)
+
+print("✅ 冒頭ブロックを挿入しました")
+PY
+```
+
+挿入後、本文の追記に進む。
+
+#### Step 5.1: 本文追記
+
 `articles/${ARTICLE_SLUG}.md` に本文を書く:
 
 - リード(なぜこの題材か、何を作ったか)

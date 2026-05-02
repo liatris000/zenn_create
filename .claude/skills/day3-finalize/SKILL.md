@@ -186,6 +186,7 @@ fi
 - [ ] コードブロックの言語指定が正しい
 - [ ] 画像パスが正しい(`https://raw.githubusercontent.com/liatris000/zenn_create/main/images/...`)
 - [ ] 内部リンクが切れていない
+- [ ] 冒頭メッセージブロック (`templates/article-header.md` 由来の `:::message` ブロック) が frontmatter 直後に挿入されている
 - [ ] 文字数が 1500〜3000 字の範囲(極端に短い / 長い場合は要調整)
 - [ ] **定性的な順位主張に計測根拠があるか**: 「最も効いた」「一番効果があった」「劇的に改善」「圧倒的に速い」等の主張は、計測値・比較データが本文中で示されているか。示せないなら表現を弱める(「印象に残った」「個人的に効いた」等)
 
@@ -204,6 +205,15 @@ if [ "${THUMB_SIZE}" -lt 5000 ]; then
   echo "⚠️  サムネ画像が小さすぎる(${THUMB_SIZE} bytes)。生成失敗の可能性"
 fi
 echo "✅ サムネ確認: ${THUMB_PATH} (${THUMB_SIZE} bytes)"
+
+# 冒頭メッセージブロックの存在確認
+if ! head -30 "articles/${ARTICLE_SLUG}.md" | grep -q ':::message'; then
+  echo "FATAL: 冒頭メッセージブロックが見つからない: articles/${ARTICLE_SLUG}.md"
+  echo "  templates/article-header.md を frontmatter 直後に挿入してください"
+  echo "  Day 2 SKILL の Step 5.0 で挿入される手順になっていますが、漏れている可能性あり"
+  exit 1
+fi
+echo "✅ 冒頭メッセージブロック確認"
 ```
 
 #### 6.3 成果物リポジトリ公開状態チェック (自動)
