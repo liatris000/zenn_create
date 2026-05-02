@@ -18,9 +18,19 @@ cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/image
 仕組みの全貌は[こちらの設計記事(note)](https://note.com/liatris000)にまとめています。
 :::
 
+## Claude Code で作ってると、こういうのに出会う
+
+Claude Code で何かを作っていると、本業でも副業でも、自分の専門領域から少しはみ出したツールに触れる場面が来る。私の場合、それが PageSpeed Insights (以下 PSI) だった。
+
+PSI は Google が提供する Web ページ表示速度の計測ツールで、検索順位にも影響する Core Web Vitals (LCP / INP / CLS) を測ってくれる。EC サイトを運用していると無視できない数値だが、私自身は本格的に触ったことがなかった。
+
+「やったほうがいい」と分かっていながら腰が重い領域、というのは Claude Code ユーザーなら他にもあるはずだ。デザインツールの API、SEO 計測、アクセシビリティチェッカー、サードパーティサービスのダッシュボード自動化 ── どれも「専門ではないけど触れたほうがいい」という距離感のもの。
+
+この記事は、そういうツールの 1 つである PSI に Claude Code 経由で MCP サーバーを繋いで、AI と一緒に手探りで進めた記録だ。専門家の解説ではなく、未知のツールを AI と並走で学ぶ段取りの参考になればと思う。
+
 ## スコアが崩れていた
 
-Next.js で構築した EC サイトの PageSpeed Insights スコアが、機能追加のたびに少しずつ下がっていた。LCP と TBT がいずれも Lighthouse の「要改善」判定を超えていた。「後でまとめて直す」を繰り返した結果だ。
+Next.js で構築した EC サイトの PageSpeed Insights スコアが、機能追加のたびに少しずつ下がっていた。LCP と TBT (Total Blocking Time、メインスレッドが反応できない時間の合計) がいずれも Lighthouse の「要改善」判定を超えていた。「後でまとめて直す」を繰り返した結果だ。
 
 手動で Lighthouse を回す作業は地味にコストがかかる。URL を開いて、スコアを読んで、「Opportunities」を確認して、コードに戻る。この往復が面倒で後回しになっていた。MCP サーバーを介すと AI が外部 API の計測機能を直接呼べる形にできる、というのを知って試してみた。Claude Code に PSI の MCP サーバーを接続したら、スコアの取得から改善指示、コード修正まで一気通貫でできることが分かった。
 
@@ -53,7 +63,7 @@ flowchart TD
     B -- Yes --> C[Opportunities 一覧化]
     C --> D[影響が大きい 1 項目を選択]
     D --> E[Claude Code が修正を実装]
-    E --> F["再計測（3〜5 回, 中央値）"]
+    E --> F["再計測 (3〜5回, 中央値)"]
     F --> B
 ```
 
@@ -114,5 +124,7 @@ PSI MCP で計測コストが下がると「実装してすぐ確認」が自然
 ## 実装サンプル
 
 @[github](https://github.com/liatris000/liatris-20260430-nextjs-psi-mcp)
+
+ブラウザで Before/After を確認できるショーケース: https://liatris000.github.io/liatris-20260430-nextjs-psi-mcp/
 
 MCP 設定テンプレートと各改善コード例を置いた。
