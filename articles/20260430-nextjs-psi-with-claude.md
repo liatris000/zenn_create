@@ -8,6 +8,16 @@ published: false
 cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20260430-nextjs-psi-with-claude_thumbnail.png
 ---
 
+:::message
+この記事は、Claude Codeを執筆支援に使った "毎朝1本書く" 取り組みの一環で書いています。
+
+- 目的: 自分のAI活用キャッチアップ。仕組み自体も毎月アップデートしていきます
+- 体制: 題材選定・実装・下書きをClaude Codeで補助、平野が動作確認と編集を経て公開判断
+- 方針: Zennのガイドラインに真摯に向き合い、運営から指摘や警告があれば即座に取り組みを停止します
+
+仕組みの全貌は[こちらの設計記事(note)](https://note.com/liatris000)にまとめています。
+:::
+
 ## スコアが崩れていた
 
 Next.js で構築した EC サイトの PageSpeed Insights スコアが、機能追加のたびに少しずつ下がっていた。LCP と TBT がいずれも Lighthouse の「要改善」判定を超えていた。「後でまとめて直す」を繰り返した結果だ。
@@ -43,7 +53,7 @@ flowchart TD
     B -- Yes --> C[Opportunities 一覧化]
     C --> D[影響が大きい 1 項目を選択]
     D --> E[Claude Code が修正を実装]
-    E --> F[再計測]
+    E --> F["再計測（3〜5 回, 中央値）"]
     F --> B
 ```
 
@@ -84,7 +94,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 ### サードパーティスクリプト（TBT）
 
-チャット系ウィジェットを直書きしていた。`next/script` の `lazyOnload` に変えると全リソース読み込み後に実行されメインスレッドのブロックがなくなる。TBT への影響が最も大きかった修正だった。最初は `afterInteractive` を試したがウィジェット起動がインタラクションと重なるケースがあったため変えた:
+チャット系ウィジェットを直書きしていた。`next/script` の `lazyOnload` に変えると全リソース読み込み後に実行されメインスレッドのブロックがなくなる。Opportunities ではこのスクリプト由来の項目が常に上位に出ていた。最初は `afterInteractive` を試したがウィジェット起動がインタラクションと重なるケースがあったため変えた:
 
 ```tsx:app/layout.tsx
 import Script from 'next/script'
