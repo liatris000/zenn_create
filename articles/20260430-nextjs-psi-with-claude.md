@@ -3,6 +3,7 @@ title: "PSI MCP × Claude Code で Core Web Vitals を改善する"
 emoji: "⚡"
 type: "tech"
 topics: ["claudecode", "nextjs", "mcp", "performance"]
+pattern: "implementation"
 published: false
 cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20260430-nextjs-psi-with-claude_thumbnail.png
 ---
