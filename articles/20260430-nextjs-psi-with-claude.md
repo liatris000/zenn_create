@@ -38,6 +38,8 @@ Next.js で構築した EC サイトの PageSpeed Insights スコアが、機能
 
 [ruslanlap/pagespeed-insights-mcp](https://github.com/ruslanlap/pagespeed-insights-mcp) は PageSpeed Insights API をラップした MCP サーバー。チャットから「このURLのスコアを取って」と指示すると、LCP・INP・CLS・FCP・TTFB・TBT・Performance スコアが構造化データで返ってくる。「Opportunities に何がある？」と続けると優先度付きで修正候補が出てくる。
 
+正直なところ Opportunities が何を指すのか最初は分からなかった。Claude Code に聞いたら「PSI が示す改善候補リストで、推定の節約時間つきで返ってきます」と説明され、そこから項目を 1 つずつ意味を確認しながら触っていった。
+
 [Google Cloud Console](https://console.cloud.google.com/) で PageSpeed Insights API を有効化し API キーを発行。次に `.claude/mcp.json` に追記する:
 
 ```json:.claude/mcp.json
@@ -73,7 +75,12 @@ flowchart TD
 
 ### ヒーロー画像（LCP）
 
-`<img>` を `next/image` + `priority` に変えると `<link rel="preload">` が生成され LCP 要素の発見が早くなる。最初は `sizes` を省略していたが、モバイルで不必要に大きい画像を送り続けていたため追加した:
+最初の手がかりはここでも対話だった:
+
+> 私: PSI のスコアは取れたけど、どこから直せばいいか分からない
+> Claude: Opportunities の上位は LCP 関連で、ヒーロー画像に preload 提案が出ています。`next/image` に置き換えますか?
+
+この一往復で「LCP から触る」と方針が決まった。`<img>` を `next/image` + `priority` に変えると `<link rel="preload">` が生成され LCP 要素の発見が早くなる。最初は `sizes` を省略していたが、モバイルで不必要に大きい画像を送り続けていたため追加した:
 
 ```tsx:components/HeroSection.tsx
 // Before
@@ -117,9 +124,11 @@ import Script from 'next/script'
 
 ## 計測と再現性について
 
-PSI は Google のサーバーから計測するため数値がぶれる。「1 回計測して改善された」ではなく、複数回取って傾向を見る習慣にした方が信頼性が上がる。SQL チューニングで EXPLAIN を複数回実行してウォームアップを確認するのと同じ発想で、「1 回の計測値」ではなく「計測値の分布」を見るかどうかで判断の質が変わる。
+PSI は Google のサーバーから計測するため数値がぶれる。「1 回計測して改善された」ではなく、複数回取って傾向を見る習慣にした方が信頼性が上がる。SQL チューニング(私が普段関わる業務領域)で EXPLAIN を複数回実行してウォームアップを確認するのと同じ発想で、「1 回の計測値」ではなく「計測値の分布」を見るかどうかで判断の質が変わる。
 
 PSI MCP で計測コストが下がると「実装してすぐ確認」が自然なフローになる。継続的に計測するなら CI に組み込んで PR ごとにスコアを記録していくのが次の方向だ。
+
+Claude Code 経由で MCP を繋いだ結果、PSI は私の中で「触ったほうがいいけど後回しのツール」から「気軽に呼べる相棒」に位置を変えた。冒頭で書いた、専門外で距離を感じているツールを抱えている人は、まず MCP 経由で繋ぐところから始めるのが手っ取り早い。用語を AI に解説させながら触れる環境を作ってしまえば、未知のツールでも数日で「自分の道具」の側に寄ってくる。
 
 ## 実装サンプル
 
