@@ -43,7 +43,7 @@ flowchart TD
     B -- Yes --> C[Opportunities 一覧化]
     C --> D[影響が大きい 1 項目を選択]
     D --> E[Claude Code が修正を実装]
-    E --> F[再計測]
+    E --> F["再計測（3〜5 回, 中央値）"]
     F --> B
 ```
 
@@ -84,7 +84,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 ### サードパーティスクリプト（TBT）
 
-チャット系ウィジェットを直書きしていた。`next/script` の `lazyOnload` に変えると全リソース読み込み後に実行されメインスレッドのブロックがなくなる。TBT への影響が最も大きかった修正だった。最初は `afterInteractive` を試したがウィジェット起動がインタラクションと重なるケースがあったため変えた:
+チャット系ウィジェットを直書きしていた。`next/script` の `lazyOnload` に変えると全リソース読み込み後に実行されメインスレッドのブロックがなくなる。Opportunities ではこのスクリプト由来の項目が常に上位に出ていた。最初は `afterInteractive` を試したがウィジェット起動がインタラクションと重なるケースがあったため変えた:
 
 ```tsx:app/layout.tsx
 import Script from 'next/script'
