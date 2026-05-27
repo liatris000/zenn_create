@@ -5,7 +5,6 @@ type: "tech"
 topics: ["claude", "python", "ai", "automation"]
 pattern: "implementation"
 published: false
-published_at: "2026-06-01 07:00"
 cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20260525-hojokin-doc-ai_thumbnail.png
 ---
 
@@ -149,7 +148,7 @@ def build_section_prompt(section: dict, profile: dict, subsidy_name: str) -> str
 
 def generate_section(client: Anthropic, section: dict, profile: dict, subsidy_name: str) -> str:
     response = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-sonnet-4-6",
         max_tokens=1024,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": build_section_prompt(section, profile, subsidy_name)}],
