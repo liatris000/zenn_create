@@ -57,7 +57,7 @@ CREATE_RESPONSE=$(curl -sS -X POST \
     \"auto_init\": true
   }" 2>&1) || true
 
-if echo "${CREATE_RESPONSE}" | grep -q '"name already exists"'; then
+if echo "${CREATE_RESPONSE}" | grep -q 'name already exists'; then
   echo "ℹ️  リポジトリは既に存在: ${REPO_NAME} (続行)"
 elif echo "${CREATE_RESPONSE}" | grep -q '"html_url"'; then
   echo "✅ リポジトリ作成完了"
@@ -99,7 +99,7 @@ if git diff --cached --quiet; then
   echo "ℹ️  push対象なし"
 else
   git commit -q -m "初回コミット: ${ARTICLE_TITLE}"
-  git push -q origin main
+  git push -q -f origin main
   echo "✅ push完了"
 fi
 
