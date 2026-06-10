@@ -5,7 +5,6 @@ type: "tech"
 topics: ["claude", "claudeapi", "python", "automation"]
 pattern: "concept"
 published: false
-published_at: "2026-06-15 07:00"
 cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20260608-inquiry-contract-pipeline_thumbnail.png
 ---
 
