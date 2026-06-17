@@ -5,7 +5,6 @@ type: "tech"
 topics: ["claude", "claudecode", "ai", "automation"]
 pattern: "implementation"
 published: false
-published_at: "2026-06-22 07:00"
 cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20260615-claude-dir-setup_thumbnail.png
 ---
 
