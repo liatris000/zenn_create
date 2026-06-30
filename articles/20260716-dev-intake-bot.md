@@ -141,6 +141,6 @@ headers: {
 
 ## 成果物
 
-@[github](https://github.com/liatris000/liatris-20260504-dev-intake-bot)
+@[github](https://github.com/liatris000/liatris-20260716-dev-intake-bot)
 
 判断の精度は system prompt の設計次第で大きく変わる。今の実装は汎用設計だが、特定領域（SaaS 連携 / データ基盤構築など）向けにチューニングすれば、より精度の高い判断が出るはずだ。
