@@ -4,8 +4,8 @@ emoji: "📝"
 type: "tech"
 topics: ["claude", "claudecode", "ai", "zenn", "automation"]
 pattern: "other"
-published: false
-cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20260701-zenn-kickoff_thumbnail.png
+published: true
+published_at: "2026-07-02 07:00"
 ---
 
 こんにちは。Zenn で技術記事を書いている liatris です。
