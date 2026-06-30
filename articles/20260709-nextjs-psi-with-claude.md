@@ -4,8 +4,9 @@ emoji: "⚡"
 type: "tech"
 topics: ["claudecode", "nextjs", "mcp", "performance"]
 pattern: "implementation"
-published: false
-cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20260430-nextjs-psi-with-claude_thumbnail.png
+published: true
+published_at: "2026-07-09 07:00"
+cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20260709-nextjs-psi-with-claude_thumbnail.png
 ---
 
 :::message
@@ -132,8 +133,8 @@ Claude Code 経由で MCP を繋いだ結果、PSI は私の中で「触った�
 
 ## 実装サンプル
 
-@[github](https://github.com/liatris000/liatris-20260430-nextjs-psi-mcp)
+@[github](https://github.com/liatris000/liatris-20260709-nextjs-psi-mcp)
 
-ブラウザで Before/After を確認できるショーケース: https://liatris000.github.io/liatris-20260430-nextjs-psi-mcp/
+ブラウザで Before/After を確認できるショーケース: https://liatris000.github.io/liatris-20260709-nextjs-psi-mcp/
 
 MCP 設定テンプレートと各改善コード例を置いた。

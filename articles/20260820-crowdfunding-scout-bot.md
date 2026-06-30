@@ -4,8 +4,9 @@ emoji: "🔍"
 type: "tech"
 topics: ["claude", "claudeapi", "firecrawl", "python", "ai"]
 pattern: "implementation"
-published: false
-cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20260622-crowdfunding-scout-bot_thumbnail.png
+published: true
+published_at: "2026-08-20 07:00"
+cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20260820-crowdfunding-scout-bot_thumbnail.png
 ---
 
 :::message
