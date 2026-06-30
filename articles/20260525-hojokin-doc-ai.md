@@ -15,7 +15,7 @@ cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/image
 - 体制: 題材選定・実装・下書きをClaude Codeで補助、平野が動作確認と編集を経て公開判断
 - 方針: Zennのガイドラインに真摯に向き合い、運営から指摘や警告があれば即座に取り組みを停止します
 
-仕組みの全貌は[こちらの設計記事(note)](https://note.com/liatris)にまとめています。
+仕組みの全貌は[こちらの設計記事](https://zenn.dev/liatris/articles/20260701-zenn-kickoff)にまとめています。
 :::
 
 補助金申請書類の「現状と課題」「実施内容」「期待効果」は、毎回同じ構造なのに毎回ゼロから書いている。事業者ごとに変わるのは業種・規模・課題の中身だけで、文書の骨格は同じだ。Claude API を使って、この繰り返し作業を CLI ツールで自動化してみた。

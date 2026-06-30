@@ -15,7 +15,7 @@ cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/image
 - 体制: 題材選定・実装・下書きをClaude Codeで補助、平野が動作確認と編集を経て公開判断
 - 方針: Zennのガイドラインに真摯に向き合い、運営から指摘や警告があれば即座に取り組みを停止します
 
-仕組みの全貌は[こちらの設計記事(note)](https://note.com/liatris000)にまとめています。
+仕組みの全貌は[こちらの設計記事](https://zenn.dev/liatris/articles/20260701-zenn-kickoff)にまとめています。
 :::
 
 「画面に日付をカレンダーで選べるようにしてほしい」という要望を受け取った時、それが1時間で終わるのか2週間かかるのかはコンテキストを聞かないと判断できない。技術スタック・既存コンポーネント・デザイン指定・期日。

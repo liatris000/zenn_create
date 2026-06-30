@@ -93,11 +93,11 @@ export REPO_URL PAGES_URL
 
 #### Step 5.0: 冒頭メッセージブロックの挿入
 
-本文を書き始める前に、`templates/article-header.md`(Zenn ガイドライン準拠の冒頭メッセージブロック: Claude Code 補助で書いていることの開示・運営からの指摘で停止する方針・設計記事 note へのリンク)を frontmatter 直後に必ず差し込む。`{{DESIGN_ARTICLE_URL}}` は環境変数 `DESIGN_ARTICLE_URL` で置換する。
+本文を書き始める前に、`templates/article-header.md`(Zenn ガイドライン準拠の冒頭メッセージブロック: Claude Code 補助で書いていることの開示・運営からの指摘で停止する方針・設計記事へのリンク)を frontmatter 直後に必ず差し込む。`{{DESIGN_ARTICLE_URL}}` は環境変数 `DESIGN_ARTICLE_URL` で置換する。
 
 ```bash
 # DESIGN_ARTICLE_URL が未設定の場合のフォールバック
-DESIGN_URL="${DESIGN_ARTICLE_URL:-https://note.com/liatris}"
+DESIGN_URL="${DESIGN_ARTICLE_URL:-https://zenn.dev/liatris/articles/20260701-zenn-kickoff}"
 
 # テンプレを置換した結果を変数に格納
 HEADER_BLOCK=$(sed "s|{{DESIGN_ARTICLE_URL}}|${DESIGN_URL}|g" templates/article-header.md)

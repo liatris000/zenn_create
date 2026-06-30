@@ -121,6 +121,6 @@ npx zenn preview
 
 ## 関連リンク
 
-- 設計記事(note): （公開後にここにURLを追記）
+- 設計記事(Zenn): https://zenn.dev/liatris/articles/20260701-zenn-kickoff
 - Zenn CLI: https://zenn.dev/zenn/articles/zenn-cli-guide
 - Zenn slug仕様: https://zenn.dev/zenn/articles/what-is-slug
