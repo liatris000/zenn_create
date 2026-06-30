@@ -5,7 +5,8 @@ type: "tech"
 topics: ["claude", "claudeapi", "python", "ai", "automation"]
 pattern: "implementation"
 published: false
-cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20260629-product-eval-ai_thumbnail.png
+published_at: "2026-08-27 07:00"
+cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20260827-product-eval-ai_thumbnail.png
 ---
 
 :::message
@@ -15,7 +16,7 @@ cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/image
 - 体制: 題材選定・実装・下書きをClaude Codeで補助、Liatrisが動作確認と編集を経て公開判断
 - 方針: Zennのガイドラインに真摯に向き合い、運営から指摘や警告があれば即座に取り組みを停止します
 
-仕組みの全貌は[こちらの設計記事(note)](https://note.com/liatris000)にまとめています。
+仕組みの全貌は[こちらの設計記事](https://zenn.dev/liatris/articles/20260701-zenn-kickoff)にまとめています。
 :::
 
 製品候補を仕入れるとき、毎回おなじ4軸で考えている。「日本で売れるか」「競合が飽和していないか」「差別化できるか」「コストが見合うか」——この判断を毎回手作業でやっていた。評価軸が固定なら、Claude API の構造化出力でパイプライン化できる。
