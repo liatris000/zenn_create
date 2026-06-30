@@ -100,13 +100,13 @@ zenn_create リポジトリで Day 3 の作業を実行してください。
 注: 環境準備は Routine 環境設定の Setup script、submodule 同期等は SessionStart hook で自動実行される。
 
 # 重要なルール
-- published: false のまま終わらせる(日曜夜の Liatris 手動マージで true にする)
-- published_at をセットしない(同上)
+- published: false → true に反転する(週刊連載キュー。マージされれば予約日時に自動公開、公開判断はマージで人間が行う)
+- published_at は Day 1 で予約済みのスロットを維持する(勝手に変更しない)
 - main への直 push は禁止
 - セルフレビューチェックリストを必ず通す
 
 # 完了報告
-「Day 3 完了 (PR: ${PR_URL}, 文字数: ${WORD_COUNT}字). 週末にチェックお願いします。日曜夜にマージで月曜 7:00 に自動公開されます。」
+「Day 3 完了 (PR: ${PR_URL}, 文字数: ${WORD_COUNT}字, 予約公開: ${PUBLISHED_AT}). 週末にチェックお願いします。レビュー後にマージすると予約スロットに自動公開されます。」
 
 # 中断時
 - Day 2 の PR が見つからない → 何もせず終了

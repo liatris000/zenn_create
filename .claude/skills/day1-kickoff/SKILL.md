@@ -90,7 +90,12 @@ test -f ~/zenn_create/business-profile/policies/disclosure-rules.md || { echo "F
 export THEME_SLUG="..."
 export ARTICLE_TITLE="..."
 export ARTICLE_TOPIC="..."
-export ARTICLE_SLUG="$(date +%Y%m%d)-${THEME_SLUG}"
+
+# 週刊連載キューの次の空きスロット(既存 published_at の最大 + 7日, 木 07:00)を予約。
+# slug の日付は「作成日」ではなく「公開予定日」に揃える。
+eval "$(./scripts/next-publish-slot.sh)"   # SLUG_DATE, PUBLISHED_AT をセット
+export ARTICLE_SLUG="${SLUG_DATE}-${THEME_SLUG}"
+export PUBLISHED_AT
 export REPO_NAME="liatris-${ARTICLE_SLUG}"
 ```
 
@@ -106,7 +111,7 @@ slug を検証:
 
 下書きの段階では:
 
-- frontmatter は作成するが `published: false` にしておく
+- frontmatter は `published: false` で作成し、`published_at: "${PUBLISHED_AT}"`(Step 4 で予約したスロット)を入れておく。`published: false` の間は予約日時が入っていても公開されない
 - 構成案レベル(各セクションの見出し + 1〜2 文の概要)を書く
 - まだコードや具体実装は書かない(Day 2 で書く)
 
