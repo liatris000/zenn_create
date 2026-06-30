@@ -4,8 +4,9 @@ emoji: "📋"
 type: "tech"
 topics: ["claude", "python", "ocr", "ai"]
 pattern: "implementation"
-published: false
-cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20260518-contract-ocr-claude-vision_thumbnail.png
+published: true
+published_at: "2026-07-23 07:00"
+cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20260723-contract-ocr-claude-vision_thumbnail.png
 ---
 
 :::message

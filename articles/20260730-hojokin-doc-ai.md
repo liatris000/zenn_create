@@ -4,8 +4,9 @@ emoji: "📄"
 type: "tech"
 topics: ["claude", "python", "ai", "automation"]
 pattern: "implementation"
-published: false
-cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20260525-hojokin-doc-ai_thumbnail.png
+published: true
+published_at: "2026-07-30 07:00"
+cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20260730-hojokin-doc-ai_thumbnail.png
 ---
 
 :::message

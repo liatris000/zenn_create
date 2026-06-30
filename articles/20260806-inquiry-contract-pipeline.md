@@ -4,8 +4,9 @@ emoji: "🤝"
 type: "tech"
 topics: ["claude", "claudeapi", "python", "automation"]
 pattern: "concept"
-published: false
-cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20260608-inquiry-contract-pipeline_thumbnail.png
+published: true
+published_at: "2026-08-06 07:00"
+cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20260806-inquiry-contract-pipeline_thumbnail.png
 ---
 
 :::message

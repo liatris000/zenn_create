@@ -4,8 +4,9 @@ emoji: "🤖"
 type: "tech"
 topics: ["claude", "claudeapi", "python", "chatbot", "automation"]
 pattern: "implementation"
-published: false
-cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20260504-dev-intake-bot_thumbnail.png
+published: true
+published_at: "2026-07-16 07:00"
+cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20260716-dev-intake-bot_thumbnail.png
 ---
 
 :::message

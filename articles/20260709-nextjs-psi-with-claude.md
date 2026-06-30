@@ -4,8 +4,9 @@ emoji: "⚡"
 type: "tech"
 topics: ["claudecode", "nextjs", "mcp", "performance"]
 pattern: "implementation"
-published: false
-cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20260430-nextjs-psi-with-claude_thumbnail.png
+published: true
+published_at: "2026-07-09 07:00"
+cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20260709-nextjs-psi-with-claude_thumbnail.png
 ---
 
 :::message
