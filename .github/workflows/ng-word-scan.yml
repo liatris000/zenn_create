@@ -1,0 +1,31 @@
+name: NGワードスキャン
+
+# 実勤務先名など、記事に出してはいけない固有名詞が公開コンテンツに
+# 混入していないかをチェックする (Issue #50 再発防止)。
+#
+# push は全ブランチを対象にする。今回の事案 (origin/article/20260429) は
+# PRを経由せずリモートに直接pushされたブランチだったため、PRトリガーだけでは
+# 検知できない。ブランチへのpush時点で検知できるようにする。
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: NGワードスキャン
+        env:
+          NG_WORDS: ${{ secrets.NG_WORDS }}
+        run: bash scripts/ng-word-scan.sh
