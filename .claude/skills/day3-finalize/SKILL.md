@@ -263,12 +263,12 @@ fi
 
 #### 6.4 機密文字列スキャン (自動)
 
-API キー / トークン等が記事本文に平文で残っていないか自動検出する:
+API キー / トークン等が記事本文に平文で残っていないか自動検出する。
+検出パターン (regex) は `scripts/article-secret-scan.sh` に一本化されており、
+CI (`.github/workflows/article-quality.yml`) と共通 (Issue #51):
 
 ```bash
-SECRET_PATTERNS='(sk-[A-Za-z0-9]{20,}|sk-ant-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{30,}|gho_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]{10,}|AIza[A-Za-z0-9_-]{30,}|-----BEGIN [A-Z ]*PRIVATE KEY-----)'
-
-if grep -E -n "${SECRET_PATTERNS}" "articles/${ARTICLE_SLUG}.md"; then
+if ! bash scripts/article-secret-scan.sh "articles/${ARTICLE_SLUG}.md"; then
   echo "FATAL: 機密と思われる文字列が記事本文に含まれている。マスクしてください"
   exit 1
 fi
