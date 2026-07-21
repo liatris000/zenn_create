@@ -1,0 +1,47 @@
+name: 記事品質チェック
+
+# articles/*.md を対象に、機密文字列 (API キー / トークン等) の混入と
+# リンク切れを PR 時にチェックする (Issue #51)。
+# NG ワード (勤務先名等の固有名詞) は ng-word-scan.yml が別途担当する。
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: 機密文字列スキャン
+        run: bash scripts/article-secret-scan.sh
+
+  link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+        with:
+          # PR の base SHA との diff を取るため全履歴を取得
+          fetch-depth: 0
+
+      - name: リンク切れチェック (PR では変更された記事のみ)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            mapfile -t FILES < <(git diff --name-only --diff-filter=d "${BASE_SHA}" HEAD -- 'articles/*.md')
+            if [ "${#FILES[@]}" -eq 0 ]; then
+              echo "変更された記事なし。スキップ"
+              exit 0
+            fi
+            bash scripts/article-link-check.sh "${FILES[@]}"
+          else
+            bash scripts/article-link-check.sh
+          fi
