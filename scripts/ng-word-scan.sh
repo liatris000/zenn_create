@@ -36,6 +36,13 @@ set -euo pipefail
 
 SCAN_PATHS=("articles" "books")
 
+# 引数で検査対象を上書きできる。成果物リポジトリは公開前にこの経路で検査する
+# (成果物は Public リポへ直行するのに、従来 articles/ books/ しか見ておらず素通りだった)。
+#   例: bash scripts/ng-word-scan.sh artifact
+if [[ $# -gt 0 ]]; then
+  SCAN_PATHS=("$@")
+fi
+
 if [[ -z "${NG_WORDS:-}" ]]; then
   echo "::error::NG_WORDS が設定されていません。リポジトリの Settings > Secrets and variables > Actions で NG_WORDS (カンマ区切り) を設定してください。"
   exit 1

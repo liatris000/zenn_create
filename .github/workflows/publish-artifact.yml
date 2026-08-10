@@ -1,0 +1,172 @@
+name: 成果物リポジトリ公開
+run-name: "publish-artifact ${{ github.event.client_payload.repo_name }} (${{ github.event.client_payload.dispatch_id }})"
+
+# routine セッションからは POST /user/repos が通らない（セッションが zenn_create に
+# スコープ固定され、repos/{owner}/{repo}/... 以外のパスをプロキシが拒否する）。
+# そのため新規リポジトリ作成はプロキシ外の Actions 側で行い、routine 側は
+# 「一時ブランチへの push」と「dispatches」という repo-scoped な操作だけを行う。
+#
+# 起動元: scripts/publish-artifact.sh
+
+on:
+  repository_dispatch:
+    types: [publish-artifact]
+
+# 一時ブランチ artifact/* の削除に必要
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: 成果物リポジトリの作成と push
+    runs-on: ubuntu-latest
+    steps:
+      - name: 入力を検証する
+        env:
+          REPO_NAME: ${{ github.event.client_payload.repo_name }}
+          ARTIFACT_BRANCH: ${{ github.event.client_payload.artifact_branch }}
+          ENABLE_PAGES: ${{ github.event.client_payload.enable_pages }}
+        run: |
+          set -euo pipefail
+          # シェル・URL に埋め込む値なので形式を厳格に検証する
+          if ! printf '%s' "${REPO_NAME}" | grep -qE '^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$'; then
+            echo "::error::repo_name の形式が不正です: ${REPO_NAME}"
+            exit 1
+          fi
+          if ! printf '%s' "${ARTIFACT_BRANCH}" | grep -qE '^artifact/[A-Za-z0-9][A-Za-z0-9._/-]{0,99}$'; then
+            echo "::error::artifact_branch は artifact/ 配下である必要があります: ${ARTIFACT_BRANCH}"
+            exit 1
+          fi
+          case "${ENABLE_PAGES}" in
+            true|false|"") ;;
+            *) echo "::error::enable_pages は true / false のみ: ${ENABLE_PAGES}"; exit 1 ;;
+          esac
+          echo "✅ 入力検証 OK"
+
+      - name: PAT の存在を確認する
+        env:
+          PAT: ${{ secrets.ARTIFACT_PUBLISH_TOKEN }}
+        run: |
+          set -euo pipefail
+          # 未設定のまま進むと「リポジトリだけ作られて中身が入らない」状態を再生産するので
+          # 明示的に fail-closed にする
+          if [ -z "${PAT}" ]; then
+            echo "::error::secrets.ARTIFACT_PUBLISH_TOKEN が未設定です。repo スコープの PAT を登録してください（docs/operations.md 参照）"
+            exit 1
+          fi
+          echo "✅ PAT 設定済み"
+
+      - name: スクリプト取得のため default branch をチェックアウトする
+        uses: actions/checkout@v5
+
+      - name: 一時ブランチをチェックアウトする
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.client_payload.artifact_branch }}
+          path: artifact
+
+      - name: 成果物の NG ワード検査
+        env:
+          NG_WORDS: ${{ secrets.NG_WORDS }}
+        run: |
+          set -euo pipefail
+          # 成果物は Public リポへ直行するが、従来の NG ワード検査は articles/ books/ しか
+          # 見ておらず素通りだった。公開前にここで塞ぐ (fail-closed)
+          bash scripts/ng-word-scan.sh artifact
+
+      - name: 成果物リポジトリを作成して push する
+        id: publish
+        env:
+          PAT: ${{ secrets.ARTIFACT_PUBLISH_TOKEN }}
+          REPO_NAME: ${{ github.event.client_payload.repo_name }}
+          ARTICLE_TITLE: ${{ github.event.client_payload.article_title }}
+          GH_USER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+
+          # --- リポジトリ作成（既存なら続行） ---
+          body=$(jq -nc --arg n "${REPO_NAME}" --arg d "${ARTICLE_TITLE}" \
+            '{name:$n, description:$d, private:false, auto_init:false}')
+          code=$(curl -sS -o /tmp/create.json -w '%{http_code}' -X POST \
+            -H "Authorization: token ${PAT}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/user/repos -d "${body}")
+
+          if [ "${code}" = "201" ]; then
+            echo "✅ リポジトリ作成: ${REPO_NAME}"
+          elif grep -q 'name already exists' /tmp/create.json 2>/dev/null; then
+            echo "ℹ️  リポジトリは既に存在するので続行: ${REPO_NAME}"
+          else
+            echo "::error::リポジトリ作成に失敗しました (HTTP ${code})"
+            jq -r '.message // .' /tmp/create.json 2>/dev/null || cat /tmp/create.json
+            exit 1
+          fi
+
+          # --- 成果物を push（履歴は作らず初回コミットのみ） ---
+          cd artifact
+          rm -rf .git
+          git init -q
+          git checkout -q -b main
+          git -c user.email=noreply@anthropic.com -c user.name=Claude add -A
+          if git diff --cached --quiet; then
+            echo "::error::成果物が空です。push するファイルがありません"
+            exit 1
+          fi
+          git -c user.email=noreply@anthropic.com -c user.name=Claude \
+            commit -q -m "初回コミット: ${ARTICLE_TITLE}"
+          git push -q -f "https://x-access-token:${PAT}@github.com/${GH_USER}/${REPO_NAME}.git" main
+          echo "✅ push 完了: $(git ls-files | wc -l) ファイル"
+          echo "file_count=$(git ls-files | wc -l)" >> "$GITHUB_OUTPUT"
+
+      - name: GitHub Pages を有効化する
+        if: ${{ github.event.client_payload.enable_pages == 'true' }}
+        env:
+          PAT: ${{ secrets.ARTIFACT_PUBLISH_TOKEN }}
+          REPO_NAME: ${{ github.event.client_payload.repo_name }}
+          GH_USER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/pages.json -w '%{http_code}' -X POST \
+            -H "Authorization: token ${PAT}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GH_USER}/${REPO_NAME}/pages" \
+            -d '{"source":{"branch":"main","path":"/"}}')
+          case "${code}" in
+            201|204) echo "✅ Pages 有効化" ;;
+            409) echo "ℹ️  Pages は既に有効" ;;
+            *)
+              # Pages はあくまで付随機能。失敗しても成果物公開自体は成立させる
+              echo "::warning::Pages 有効化に失敗 (HTTP ${code}): $(jq -r '.message // .' /tmp/pages.json 2>/dev/null)"
+              ;;
+          esac
+
+      - name: 一時ブランチを削除する
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_BRANCH: ${{ github.event.client_payload.artifact_branch }}
+        run: |
+          set -euo pipefail
+          # 失敗時も消す。残すと次回の push -f まで zenn_create に無関係な履歴が残るため
+          if gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${ARTIFACT_BRANCH}" 2>/dev/null; then
+            echo "✅ 一時ブランチ削除: ${ARTIFACT_BRANCH}"
+          else
+            echo "::warning::一時ブランチの削除に失敗（既に無い可能性）: ${ARTIFACT_BRANCH}"
+          fi
+
+      - name: サマリを出力する
+        if: always()
+        env:
+          REPO_NAME: ${{ github.event.client_payload.repo_name }}
+          GH_USER: ${{ github.repository_owner }}
+          ENABLE_PAGES: ${{ github.event.client_payload.enable_pages }}
+        run: |
+          {
+            echo "## 成果物リポジトリ公開"
+            echo ""
+            echo "- リポジトリ: https://github.com/${GH_USER}/${REPO_NAME}"
+            if [ "${ENABLE_PAGES}" = "true" ]; then
+              echo "- Pages: https://${GH_USER}.github.io/${REPO_NAME}/"
+            fi
+            echo "- ファイル数: ${{ steps.publish.outputs.file_count || '-' }}"
+          } >> "$GITHUB_STEP_SUMMARY"
