@@ -20,6 +20,11 @@ permissions:
 
 jobs:
   scan:
+    # Dependabot の PR には Actions secrets が渡らない (Dependabot は別の secret ストアを
+    # 使う)。そのため NG_WORDS が空になり fail-closed で必ず落ちる。
+    # Dependabot は manifest / lockfile しか触らないので、ここでは skip して
+    # main への push 時に secrets 付きで検査する (push トリガーは全ブランチ対象)。
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: リポジトリをチェックアウト
