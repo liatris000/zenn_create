@@ -178,5 +178,5 @@ Day 1 完了 (PR: ${PR_URL}, 題材: ${ARTICLE_TOPIC})
 ## 絶対 NG(Day 1 特有)
 
 - 業務プロフィール内のファイル(`business-profile/`)を編集しない
-- kubell 領域の具体実装を題材化しない(Liatris 確認なしの自動判定 NG)
+- 本業(実勤務先)領域の具体実装を題材化しない(Liatris 確認なしの自動判定 NG。対象は `business-profile/policies/disclosure-rules.md` に会社ごとの ❌ / ✅ 例がある)
 - 業務コンテクストを commit message / PR 本文に出さない

@@ -1,6 +1,6 @@
 ---
 name: topic-selection
-description: Zenn 記事の題材を選定する時に使う。業務プロフィールから候補を抽出し、需要×供給シグナルで判定する。Day 1 の題材選定フェーズで必須。新しい題材を選ぶ時、業務プールから候補を抽出する時、kubell 領域を題材化検討する時に発動する。
+description: Zenn 記事の題材を選定する時に使う。業務プロフィールから候補を抽出し、需要×供給シグナルで判定する。Day 1 の題材選定フェーズで必須。新しい題材を選ぶ時、業務プールから候補を抽出する時、本業(実勤務先)領域を題材化検討する時に発動する。
 ---
 
 # 題材選定 skill
@@ -50,19 +50,23 @@ AI 記事の題材選定を業務プロフィールベースで行うための�
 
 ## 業務プール参照の手順
 
-1. 以下の README を順に view する:
-   - `business-profile/companies/ymn/README.md`
-   - `business-profile/companies/onelife/README.md`
-   - `business-profile/companies/linkalink/README.md`
-   - `business-profile/companies/personal/yamabiko/README.md`
+1. 業務プールの README を順に view する。**対象は固定リストで持たず、実行時に列挙する**
+   (このリポジトリは Public なのでプール名をここに書かない。プールの増減にも自動で追随する):
+
+   ```bash
+   find business-profile/companies -mindepth 2 -maxdepth 3 -name README.md | sort
+   ```
+
+   どのプールを対象にするかの正本は `business-profile/companies/personal/ai-articles/topic-selection.md`。
 
 2. 各種のメタデータをチェック:
    - `status: 未着手` のものだけを候補にする
    - `disclosure: blocked` は除外する
    - `catchup_value: high` を優先する
 
-3. **kubell 領域は対象外**(business-profile 側の `topic-selection.md` で明記されている)
-   - kubell 関連の題材候補が思い浮かんでも、Liatris に必ず確認する
+3. **本業(実勤務先)領域は対象外**(business-profile 側の `topic-selection.md` で明記されている)
+   - 該当領域の題材候補が思い浮かんでも、Liatris に必ず確認する
+   - どの領域が該当するかは `business-profile/policies/disclosure-rules.md` を見る
 
 ## 既存記事に引きずられない
 
@@ -170,10 +174,10 @@ skill の出力として、以下のフォーマットを Step 6 (PR 作成) に
 このスキルを使う時、以下を厳守する:
 
 - 題材選定の commit message に業務コンテクストを出さない
-  - ❌「家業の OCR 自動化を題材として採用」
+  - ❌「(実在の事業名)の OCR 自動化を題材として採用」
   - ✅「Day 1: 題材選定完了」
 - PR 本文の題材説明に業務コンテクストを出さない
-  - ❌「家業で必要な機能」
+  - ❌「(実在の事業名)で必要な機能」
   - ✅「OCR で契約書をパースする UI」
 
 詳細は `docs/cycle-overview.md` の「情報漏れ対策」セクション参照。
