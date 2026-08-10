@@ -83,11 +83,34 @@ EOF
 
 ### Step 4: 成果物リポジトリの公開
 
+**スクリプトは 1 回だけ実行する**。内部で GitHub Actions を起動して完了まで待つため、
+二重に呼ぶと dispatch が 2 本走って待ち時間も倍になる。
+
 ```bash
-./scripts/publish-artifact.sh "${REPO_NAME}" "/tmp/zenn_artifact" "${ARTICLE_TITLE}"
-eval $(./scripts/publish-artifact.sh "${REPO_NAME}" "/tmp/zenn_artifact" "${ARTICLE_TITLE}" | grep -E '^(REPO_URL|PAGES_URL)=')
+PUBLISH_LOG=$(./scripts/publish-artifact.sh "${REPO_NAME}" "/tmp/zenn_artifact" "${ARTICLE_TITLE}")
+echo "${PUBLISH_LOG}"
+eval "$(printf '%s' "${PUBLISH_LOG}" | grep -E '^(REPO_URL|PAGES_URL)=')"
 export REPO_URL PAGES_URL
 ```
+
+#### 仕組み(2026-08-11 変更)
+
+routine セッションからは `POST /user/repos` が通らない。セッションが `zenn_create` に
+スコープ固定されていて、`repos/{owner}/{repo}/...` 以外のパスをプロキシが拒否するため。
+**トークンの権限問題ではないので、より強い PAT を渡しても解消しない。**
+
+そのため新規リポジトリ作成はプロキシ外の Actions に委譲している:
+
+1. 成果物を `artifact/<repo-name>` ブランチへ push(repo-scoped なので通る)
+2. `repository_dispatch` で `.github/workflows/publish-artifact.yml` を起動(同上)
+3. Actions が PAT で新規リポジトリを作成・push・Pages 有効化し、一時ブランチを削除
+4. スクリプトは run の完了を polling して成否を判定(失敗なら非ゼロ終了)
+
+#### 失敗したときの扱い
+
+スクリプトが非ゼロで終了した場合、**成果物リポジトリ無しで Day 2 を完了扱いにしない**。
+PR にエラー内容と run URL を添えてコメントし、停止する(記事本文だけ push して
+「完了」と報告するのは禁止。2026-08-04 に実際に発生し、Day 3 で不整合として検出された)。
 
 ### Step 5: 記事本文の追記
 
