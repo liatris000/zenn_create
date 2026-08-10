@@ -11,7 +11,8 @@ description: Zenn 記事生成の Day 1(月曜朝)の作業手順。題材選定
 
 - 月曜朝の Routine 起動を想定
 - `business-profile/` submodule が同期済み(SessionStart hook `scripts/session-start.sh` で毎セッション同期される)
-- 前週の PR がマージ済みで、新サイクルを始められる状態
+- 前週の PR は Step 1.6 で処理する。**マージ済みであることを Day 1 の前提にしない**
+  (前提にすると、詰まった PR が 1 本あるだけで以後すべての週が止まる)
 
 ## 作業手順
 
@@ -64,6 +65,50 @@ test -f ~/zenn_create/business-profile/policies/disclosure-rules.md || { echo "F
 ```
 
 このチェックを合格しない限り Step 2(題材選定)に進んではならない。
+
+#### Step 1.6: 前サイクルの後始末 (デッドロック回避)
+
+**前サイクルの PR が open だからといって Day 1 を中止してはならない。** 中止すると、
+その PR が解消されるまで毎週空振りし続ける。
+
+> 2026-08 に PR #59 が Day 2 / Day 3 で停止して open のまま残り、Day 1 が
+> 「前サイクルが未マージ」と判断して 3 週連続で `Nothing was pushed to any branch
+> this run` に終わった。
+
+```bash
+PREV=$(gh pr list --state open --search '"[Day " in:title' \
+  --json number,title,url,updatedAt --limit 5)
+```
+
+PR タイトルで場合分けする:
+
+| 前サイクル PR | 意味 | Day 1 の挙動 |
+|---|---|---|
+| 無い | マージ済み / close 済み | **通常どおり新サイクル開始** |
+| `[Day 3/3 Ready for Review]` | レビュー待ち。**正常な状態** | **新サイクル開始**。Chatwork でマージ督促を添える |
+| `[Day 1/3 WIP]` / `[Day 2/3 WIP]` | 前サイクルが停止している | **自動 close** してから新サイクル開始 |
+
+月曜時点で健全なサイクルは Day 3/3 かマージ済みのはず。月曜に WIP が残っているのは
+Day 2 か Day 3 が失敗したということなので、放置せず畳む。
+
+```bash
+# WIP のまま残っている前サイクルを畳む
+gh pr comment "${PREV_NUMBER}" --body "$(cat <<'COMMENT'
+## 自動クローズ: 前サイクルが WIP のまま残っていたため
+
+月曜時点で `[Day N/3 WIP]` が open のままでした。Day 2 または Day 3 が完了していません。
+この PR を残すと Day 1 が新サイクルを開始できず、以後すべての週が空振りするため
+自動で close します。
+
+再開したい場合はこの PR を reopen せず、内容を新しいサイクルの題材として再投入してください。
+COMMENT
+)"
+gh pr close "${PREV_NUMBER}" --delete-branch
+```
+
+公開スロットは `scripts/next-publish-slot.sh` が「既存 `published_at` の最大 + 7 日」で
+算出するため、`[Day 3/3 Ready for Review]` の PR と新サイクルが並走しても
+公開日は衝突しない。
 
 ### Step 2: 題材選定
 
@@ -136,11 +181,24 @@ PR 本文には以下を明記:
 
   > 🔍 **Liatris レビューお願いします(Day 2 起動前の火曜朝までに)**
   >
-  > Day 1 ルーティンが自動採用した題材です。NG の場合はこの PR を close すれば、Day 2 ルーティンは PR を見つけられず自動的にスキップされます。
+  > Day 1 ルーティンが自動採用した題材です。
+  > **NG の場合のみ、この PR を close してください。** close すると Day 2 ルーティンは
+  > PR を見つけられず、その週は自動的にスキップされます。
+  > **何もしなければ承認とみなして Day 2 が進みます**(返信もチェックも不要)。
   > 採用判定の根拠は下記の通り:
 
-- **disclosure: careful の場合の警告**: 採用題材が careful なら、上記レビュー依頼の直後に **「⚠️ disclosure: careful 題材につき、レビュー必須」** を追記
+- **disclosure: careful の場合の警告**: 採用題材が careful なら、上記レビュー依頼の直後に **「⚠️ disclosure: careful 題材。内容を確認し、NG なら close してください」** を追記
 - **★★ 自動採用の場合の警告**: 採用題材が ★★ なら、上記レビュー依頼の直後に **「⚠️ ★★ 自動採用のため、題材として弱い可能性あり」** を追記
+
+#### PR 本文にチェックボックスを置かない ⚠️
+
+`- [ ]` 形式のチェックリストを PR 本文に書いてはならない。
+
+Day 2 / Day 3 ルーティンが「未チェック = 未承認」と解釈して停止する事故が起きたため
+(2026-08、3 週にわたりサイクル停止)。承認は **close されないこと** で表現される設計であり、
+チェックボックスはその設計と矛盾するシグナルになる。
+
+確認してほしい点がある場合は、チェックボックスではなく平文の箇条書きで書く。
 
 ### Step 7: Chatwork 通知
 
