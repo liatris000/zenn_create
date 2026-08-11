@@ -35,6 +35,17 @@ PR が見つからない場合(月曜サボった、Liatris が火曜朝に PR �
 - **何もせず終了する**(その週は中止)
 - Chatwork に「Day 2: 対象 PR が見つからないためスキップ」と通知
 
+**対象 PR が無いときは、commit も PR 作成もしない。**
+SessionStart hook（`scripts/session-start.sh`）が submodule を同期するため、
+何もしないつもりでも作業ツリーに差分が出ていることがある。それを拾って
+commit / PR 化しないこと。
+
+> 2026-08-11 に Day 2 が対象 PR 不在の状況で submodule pointer だけの PR（#66）を作り、
+> しかもその pointer が古いままだったため巻き戻しになりかけた。
+
+差分が出ている場合は `git checkout -- .` で捨ててから終了する。
+
+
 ### 承認の判定: PR が open であること = 題材承認済み ⚠️ 必読
 
 `docs/cycle-overview.md` の定義どおり、Liatris の承認は **無反応で表される**。
