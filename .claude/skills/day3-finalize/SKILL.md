@@ -97,6 +97,18 @@ export REPO_URL
 成果物リポジトリのリンクが記事に無い場合は、**停止せず** PR コメントで指摘したうえで
 Ready for Review まで進める(Liatris が週末レビューで判断できる)。
 
+### 中止するときは副作用を残さない ⚠️
+
+**対象 PR が無いときは、commit も PR 作成もしない。**
+SessionStart hook(`scripts/session-start.sh`)が submodule を同期するため、
+何もしないつもりでも作業ツリーに差分が出ていることがある。それを拾って
+commit / PR 化しないこと。
+
+> 2026-08-11 に Day 2 が対象 PR 不在の状況で submodule pointer だけの PR(#66)を作り、
+> しかもその pointer が古いままだったため巻き戻しになりかけた。
+
+差分が出ている場合は `git checkout -- .` で捨ててから終了する。
+
 ### Step 1: フィードバック確認
 
 ```bash
