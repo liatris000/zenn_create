@@ -6,7 +6,6 @@ topics: ["claude", "claudeapi", "python", "automation", "ai"]
 pattern: "implementation"
 published: false
 published_at: "2026-09-10 07:00"
-cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20260910-sales-prep-followup-ai_thumbnail.png
 ---
 
 :::message
