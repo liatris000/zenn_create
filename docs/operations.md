@@ -66,24 +66,54 @@ PAT を再発行して secret を更新する。
 
 ### 成果物リポジトリが作られない / 空のまま
 
-- **症状**: Day 2 が「リポジトリ作成がブロックされた」と報告して停止する。
+- **症状**: Day 2 が「リポジトリ作成がブロックされた」と報告する。
   あるいはリポジトリだけ存在して 0KB になる
-- **原因**: 上記のスコープ制約。2026-05-05 の成功を最後に、以降のサイクルはすべてここで
-  停止していた(4 サイクル中 3 本が中断)
-- **対処**: `ARTIFACT_PUBLISH_TOKEN` を登録する(上記「初期設定」)。
-  実行経路は `scripts/publish-artifact.sh` → `repository_dispatch` →
-  `.github/workflows/publish-artifact.yml`
+- **原因**: routine セッションからは GitHub API 経由で Actions を起動できない。
+  `POST /user/repos` は 2026-05-05 を最後に通らなくなり、代替に据えた
+  `repository_dispatch` も 2026-08-18 に
+  `repository_dispatch is not permitted for this session type.` (403) で拒否された
+- **対処(2026-08-18 以降)**: 起動経路を API から git に寄せた。
+  `scripts/publish-artifact.sh` が使う GitHub 操作は git push / ls-remote / fetch だけ:
+
+  1. 一時ブランチ `artifact/<repo-name>` を **main 起点**で作り、成果物を `_artifact/` に
+     置いて push(main 起点なのは、push イベントのワークフローが「押されたブランチ側の
+     ファイル」で動くため。成果物だけの孤立ブランチではワークフローが載っておらず
+     起動しない)
+  2. `.github/workflows/publish-artifact.yml` が push で起動し、PAT で新規リポジトリを
+     作成・push・Pages 有効化する
+  3. Actions が結果を `artifact-result/<repo-name>` ブランチへ書き戻す
+  4. スクリプトが `git ls-remote` で polling して成否を判定する
+- **前提**: `ARTIFACT_PUBLISH_TOKEN` の登録(上記「初期設定」)
 - **確認**: https://github.com/liatris000/zenn_create/actions の
   「成果物リポジトリ公開」ワークフローの run を見る
+- **手動再実行**: Actions の Run workflow から `artifact/<repo-name>` ブランチを選ぶ。
+  routine から再試行させるなら `./scripts/retry-artifact-publish.sh <repo-name>`
+
+### 成果物が未公開のまま Day 3 に渡ってきた
+
+- **症状**: PR に `## ⚠️ 成果物リポジトリ公開が未完了です` というコメントが付いている。
+  記事本文に `<!-- ARTIFACT_LINKS -->` が残っている
+- **背景**: Day 2 は 2026-08-18 以降、本文執筆を先に済ませ、成果物公開が失敗しても
+  停止しない。公開失敗で 1 週間分の記事を失わないため
+- **対処**: Day 3 の Step 6.3 が自動で `scripts/retry-artifact-publish.sh` を呼ぶ。
+  再試行も失敗した場合は Day 3 が停止し、Liatris の判断待ちになる
 
 ### 一時ブランチ `artifact/*` が残っている
 
-- 正常時は Actions の最終ステップで削除される(失敗時も `if: always()` で削除)
-- 残っている場合は Actions の run 自体が起動しなかった可能性。手動で削除してよい
+- **成功時**は Actions の最終ステップで削除される
+- **失敗時は意図的に残す**。Day 3 が再試行するときの成果物の置き場がここしかないため
+  (Day 3 は別セッションなので Day 2 の `/tmp/zenn_artifact` は残っていない)
+- 記事がマージ済みなのに残っている場合は手動で削除してよい
 
   ```bash
   git push origin --delete artifact/<リポジトリ名>
   ```
+
+### 結果ブランチ `artifact-result/*` が残っている
+
+- 正常時はスクリプトが読んだ直後に削除する
+- 残っている場合は Actions は完走したがスクリプト側が途中で落ちた可能性。
+  次回実行時に自動で消されるので放置してよい
 
 ### Day 1 が「前サイクルが未マージ」で毎週空振りする
 
