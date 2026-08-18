@@ -64,6 +64,8 @@ fi
 echo "Restored: ARTICLE_SLUG=${ARTICLE_SLUG}, ARTICLE_TITLE=${ARTICLE_TITLE}"
 
 # 成果物リポジトリの URL を記事本文中の GitHub リンクから抽出 (Step 6.3 で使用)
+# Day 2 で公開が失敗していると本文は <!-- ARTIFACT_LINKS --> のままで空になる。
+# その場合は Step 6.3 が再試行するので、ここで空でも停止しない
 REPO_URL=$(grep -oE 'https://github\.com/liatris000/liatris-[A-Za-z0-9_-]+' \
   "articles/${ARTICLE_SLUG}.md" \
   | head -1)
@@ -267,7 +269,7 @@ echo "✅ サムネ確認: ${THUMB_PATH} (${THUMB_SIZE} bytes)"
 if ! head -30 "articles/${ARTICLE_SLUG}.md" | grep -q ':::message'; then
   echo "FATAL: 冒頭メッセージブロックが見つからない: articles/${ARTICLE_SLUG}.md"
   echo "  templates/article-header.md を frontmatter 直後に挿入してください"
-  echo "  Day 2 SKILL の Step 5.0 で挿入される手順になっていますが、漏れている可能性あり"
+  echo "  Day 2 SKILL の Step 4.0 で挿入される手順になっていますが、漏れている可能性あり"
   exit 1
 fi
 echo "✅ 冒頭メッセージブロック確認"
@@ -275,30 +277,87 @@ echo "✅ 冒頭メッセージブロック確認"
 
 #### 6.3 成果物リポジトリ公開状態チェック (自動)
 
-`REPO_URL` (Step 0 で抽出) を使って成果物リポジトリの状態を確認する:
+Day 2 は本文執筆を先に済ませ、成果物公開に失敗しても停止しない(2026-08-18 変更)。
+そのため Day 3 には **「本文はあるが成果物が未公開」** という状態が渡りうる。
+ここで検出して再試行し、それでもダメなら停止する。
 
 ```bash
-if [ -n "${REPO_URL}" ]; then
-  REPO_PATH=$(echo "${REPO_URL}" | sed -E 's|^https://github\.com/||; s|/$||')
-
-  # 公開状態チェック
-  VISIBILITY=$(gh api "repos/${REPO_PATH}" --jq '.visibility' 2>/dev/null || echo "")
-  if [ "${VISIBILITY}" != "public" ]; then
-    echo "FATAL: 成果物リポジトリが公開されていない: ${REPO_PATH} (visibility=${VISIBILITY})"
-    exit 1
-  fi
-
-  # README 非空チェック
-  README_SIZE=$(gh api "repos/${REPO_PATH}/readme" --jq '.size' 2>/dev/null || echo "0")
-  if [ "${README_SIZE}" = "0" ] || [ -z "${README_SIZE}" ]; then
-    echo "FATAL: 成果物リポジトリの README が空: ${REPO_PATH}"
-    exit 1
-  fi
-  echo "✅ 成果物リポジトリ確認: ${REPO_PATH} (public, README ${README_SIZE} bytes)"
-else
-  echo "⚠️  REPO_URL 未抽出 — 記事内に成果物リンクがない可能性。Step 0 を再確認"
+# --- 1. 未公開マーカーの検出 ---
+# Day 2 は本文に <!-- ARTIFACT_LINKS --> を置き、公開に成功したときだけ実 URL に置換する。
+# 失敗時は PR に「## ⚠️ 成果物リポジトリ公開が未完了です」というコメントを残す
+PUBLISH_PENDING=""
+if grep -q '<!-- ARTIFACT_LINKS -->' "articles/${ARTICLE_SLUG}.md"; then
+  PUBLISH_PENDING="yes"
 fi
+if gh pr view "${PR_NUMBER}" --json comments -q '.comments[].body' \
+    | grep -q '成果物リポジトリ公開が未完了'; then
+  PUBLISH_PENDING="yes"
+fi
+
+# --- 2. 未公開なら再試行 ---
+if [ -n "${PUBLISH_PENDING}" ]; then
+  echo "⚠️  成果物が未公開の状態で Day 3 に渡っています。再試行します"
+  set +e
+  RETRY_LOG=$(./scripts/retry-artifact-publish.sh "liatris-${ARTICLE_SLUG}" 2>&1)
+  RETRY_RC=$?
+  set -e
+  echo "${RETRY_LOG}"
+
+  if [ "${RETRY_RC}" -ne 0 ]; then
+    echo "FATAL: 成果物リポジトリが未公開のままです。Ready for Review にはできません"
+    echo "  記事本文と PR はそのまま残るので、Liatris が判断してください"
+    gh pr comment "${PR_URL}" --body "Day 3: 成果物リポジトリ公開の再試行に失敗しました。Liatris の判断が必要です。"
+    exit 1
+  fi
+
+  eval "$(printf '%s' "${RETRY_LOG}" | grep -E '^(REPO_URL|PAGES_URL)=')"
+  export REPO_URL PAGES_URL
+
+  # プレースホルダを実 URL に置換する (Day 2 SKILL Step 6.1 と同じ処理)
+  python3 - "articles/${ARTICLE_SLUG}.md" "${REPO_URL}" "${PAGES_URL:-}" <<'PYLINK'
+import sys
+path, repo_url, pages_url = sys.argv[1], sys.argv[2], sys.argv[3]
+block = "@[github](%s)" % repo_url
+if pages_url:
+    block += "\n\nデモ: %s" % pages_url
+src = open(path, encoding="utf-8").read()
+if "<!-- ARTIFACT_LINKS -->" not in src:
+    print("INFO: プレースホルダなし、スキップ")
+    sys.exit(0)
+open(path, "w", encoding="utf-8").write(src.replace("<!-- ARTIFACT_LINKS -->", block))
+print("成果物リンクを差し込みました")
+PYLINK
+  git add "articles/${ARTICLE_SLUG}.md"
+  git commit -m "Day 3: 成果物リポジトリのリンクを追加"
+fi
+
+# --- 3. 公開状態の確認 ---
+# routine セッションからは他リポジトリへの GitHub API 呼び出しが通る保証がないため、
+# 「API で確認できないこと」を「公開されていないこと」と取り違えないよう、
+# API ではなく anonymous clone (= public な実体があることそのもの) で確認する
+REPO_URL="${REPO_URL:-https://github.com/liatris000/liatris-${ARTICLE_SLUG}}"
+CHECK_DIR=$(mktemp -d)
+if GIT_TERMINAL_PROMPT=0 git -c credential.helper= \
+    clone -q --depth 1 "${REPO_URL}.git" "${CHECK_DIR}/repo" 2>/dev/null; then
+  README_FILE=$(find "${CHECK_DIR}/repo" -maxdepth 1 -iname 'README*' | head -1)
+  if [ -z "${README_FILE}" ] || [ ! -s "${README_FILE}" ]; then
+    echo "FATAL: 成果物リポジトリの README が空: ${REPO_URL}"
+    rm -rf "${CHECK_DIR}"
+    exit 1
+  fi
+  echo "✅ 成果物リポジトリ確認: ${REPO_URL} (public, README $(wc -c < "${README_FILE}" | tr -d ' ') bytes)"
+else
+  echo "FATAL: 成果物リポジトリを public として取得できません: ${REPO_URL}"
+  echo "  未作成 / private / 名前違いのいずれかです"
+  rm -rf "${CHECK_DIR}"
+  exit 1
+fi
+rm -rf "${CHECK_DIR}"
 ```
+
+> 注: routine セッションで `url.<token>@github.com.insteadOf` が設定されていると
+> private リポジトリでも clone が通りうる。ここでの主目的は「成果物が実在するか」の
+> 確認で、public 指定自体は Actions 側 (`private:false`) が担保している。
 
 #### 6.4 機密文字列スキャン (自動)
 

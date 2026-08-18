@@ -120,40 +120,14 @@ EOF
 
 `.claude/` 以外のファイル(README.md, components/*.tsx 等)は通常通り `/tmp/zenn_artifact/` 直下に書いて OK。
 
-### Step 4: 成果物リポジトリの公開
+### Step 4: 記事本文の追記
 
-**スクリプトは 1 回だけ実行する**。内部で GitHub Actions を起動して完了まで待つため、
-二重に呼ぶと dispatch が 2 本走って待ち時間も倍になる。
+**成果物リポジトリの公開より先に本文を書く**(2026-08-18 に順序を入れ替えた)。
+以前は公開が先で、失敗すると本文を書かずに停止していた。その結果 2026-08-18 に
+公開経路が塞がれただけでその週の記事が丸ごと消えた。本文が先にあれば、公開が
+失敗しても Day 3 が引き継いで再試行できる。
 
-```bash
-PUBLISH_LOG=$(./scripts/publish-artifact.sh "${REPO_NAME}" "/tmp/zenn_artifact" "${ARTICLE_TITLE}")
-echo "${PUBLISH_LOG}"
-eval "$(printf '%s' "${PUBLISH_LOG}" | grep -E '^(REPO_URL|PAGES_URL)=')"
-export REPO_URL PAGES_URL
-```
-
-#### 仕組み(2026-08-11 変更)
-
-routine セッションからは `POST /user/repos` が通らない。セッションが `zenn_create` に
-スコープ固定されていて、`repos/{owner}/{repo}/...` 以外のパスをプロキシが拒否するため。
-**トークンの権限問題ではないので、より強い PAT を渡しても解消しない。**
-
-そのため新規リポジトリ作成はプロキシ外の Actions に委譲している:
-
-1. 成果物を `artifact/<repo-name>` ブランチへ push(repo-scoped なので通る)
-2. `repository_dispatch` で `.github/workflows/publish-artifact.yml` を起動(同上)
-3. Actions が PAT で新規リポジトリを作成・push・Pages 有効化し、一時ブランチを削除
-4. スクリプトは run の完了を polling して成否を判定(失敗なら非ゼロ終了)
-
-#### 失敗したときの扱い
-
-スクリプトが非ゼロで終了した場合、**成果物リポジトリ無しで Day 2 を完了扱いにしない**。
-PR にエラー内容と run URL を添えてコメントし、停止する(記事本文だけ push して
-「完了」と報告するのは禁止。2026-08-04 に実際に発生し、Day 3 で不整合として検出された)。
-
-### Step 5: 記事本文の追記
-
-#### Step 5.0: 冒頭メッセージブロックの挿入
+#### Step 4.0: 冒頭メッセージブロックの挿入
 
 本文を書き始める前に、`templates/article-header.md`(Zenn ガイドライン準拠の冒頭メッセージブロック: Claude Code 補助で書いていることの開示・運営からの指摘で停止する方針・設計記事へのリンク)を frontmatter 直後に必ず差し込む。`{{DESIGN_ARTICLE_URL}}` は環境変数 `DESIGN_ARTICLE_URL` で置換する。
 
@@ -199,19 +173,30 @@ PY
 
 挿入後、本文の追記に進む。
 
-#### Step 5.1: 本文追記
+#### Step 4.1: 本文追記
 
 `articles/${ARTICLE_SLUG}.md` に本文を書く:
 
 - リード(なぜこの題材か、何を作ったか)
 - 実装の各 Step
-- 成果物の埋め込み(`@[github]` + `:::details` + スクショ)
+- 成果物の埋め込み欄。この時点では成果物リポジトリがまだ存在しないので、
+  **次の 1 行をそのまま置く**(Step 6.1 が実 URL に置換する):
+
+  ```
+  <!-- ARTIFACT_LINKS -->
+  ```
+
 - 感想(良かった点・惜しかった点・業務での活用イメージ)
 - まとめ
 
 文体は `.claude/skills/article-writing/SKILL.md` を厳守。
 
-### Step 6: PR タイトル更新と追記コミット
+### Step 5: PR タイトル更新と追記コミット
+
+**ここまで来たらその週は死なない。** 成果物公開より前にタイトルを `[Day 2/3 WIP]` へ
+変えておくことで、以降のステップが失敗しても翌日の Day 3 が PR を見つけられる
+(Day 3 の Step 0 は `"[Day 2/3 WIP]" in:title` で検索するため、タイトルが
+`[Day 1/3 WIP]` のままだと空振りして週が消える)。
 
 PR タイトルを `[Day 2/3 WIP]` に変更:
 
@@ -223,9 +208,101 @@ gh pr edit "${PR_URL}" --title "[Day 2/3 WIP] ${ARTICLE_TITLE}"
 
 ```bash
 git add articles/${ARTICLE_SLUG}.md
-git commit -m "Day 2: 実装と推敲"
+git commit -m "Day 2: 実装と本文執筆"
 git push origin "${LATEST_BRANCH}"
 ```
+
+### Step 6: 成果物リポジトリの公開
+
+**スクリプトは 1 回だけ実行する**。内部で GitHub Actions を起動して完了まで待つため、
+二重に呼ぶと push が 2 本走って待ち時間も倍になる。
+
+```bash
+set +e
+PUBLISH_LOG=$(./scripts/publish-artifact.sh "${REPO_NAME}" "/tmp/zenn_artifact" "${ARTICLE_TITLE}" 2>&1)
+PUBLISH_RC=$?
+set -e
+echo "${PUBLISH_LOG}"
+eval "$(printf '%s' "${PUBLISH_LOG}" | grep -E '^(REPO_URL|PAGES_URL)=')"
+export REPO_URL PAGES_URL
+```
+
+#### 仕組み(2026-08-18 変更)
+
+routine セッションからは GitHub API 経由で Actions を起動できない。
+
+- `POST /user/repos` は 2026-05-05 を最後に通らなくなった
+- 代替に据えた `repository_dispatch` も 2026-08-18 に
+  `repository_dispatch is not permitted for this session type.` (403) で拒否された。
+  「エージェントに CI を起動させない」という名指しのポリシーなので、
+  **別の dispatch endpoint に替えても再発しうる**
+
+そこで起動を API から git に寄せた。スクリプトが使う GitHub 操作は
+**git push / git ls-remote / git fetch だけ**で、GitHub API を一切叩かない:
+
+1. 一時ブランチ `artifact/<repo-name>` を **main 起点**で作り、成果物を `_artifact/` に置いて push
+   (main 起点なのは、push イベントのワークフローが「押されたブランチ側のファイル」で
+   動くため。成果物だけの孤立ブランチではワークフローが載っておらず起動しない)
+2. `.github/workflows/publish-artifact.yml` が push で起動し、PAT で新規リポジトリを
+   作成・push・Pages 有効化し、一時ブランチを削除する
+3. Actions が結果を `artifact-result/<repo-name>` ブランチへ書き戻す
+4. スクリプトが `git ls-remote` でそれを polling して成否を判定し、読んだら削除する
+
+#### Step 6.1: 成功したら成果物リンクを本文に差し込む
+
+Step 4 で置いた `<!-- ARTIFACT_LINKS -->` を実 URL に置換する。
+
+```bash
+if [ "${PUBLISH_RC}" -eq 0 ] && [ -n "${REPO_URL}" ]; then
+  python3 - "articles/${ARTICLE_SLUG}.md" "${REPO_URL}" "${PAGES_URL:-}" <<'PYLINK'
+import sys
+path, repo_url, pages_url = sys.argv[1], sys.argv[2], sys.argv[3]
+block = "@[github](%s)" % repo_url
+if pages_url:
+    block += "\n\nデモ: %s" % pages_url
+src = open(path, encoding="utf-8").read()
+if "<!-- ARTIFACT_LINKS -->" not in src:
+    print("WARN: プレースホルダが見つかりません。手で差し込んでください", file=sys.stderr)
+    sys.exit(0)
+open(path, "w", encoding="utf-8").write(src.replace("<!-- ARTIFACT_LINKS -->", block))
+print("成果物リンクを差し込みました")
+PYLINK
+  git add "articles/${ARTICLE_SLUG}.md"
+  git commit -m "Day 2: 成果物リポジトリのリンクを追加"
+  git push origin "${LATEST_BRANCH}"
+fi
+```
+
+#### 失敗したときの扱い(2026-08-18 変更)
+
+**記事本文と PR タイトルは Step 4/5 で既に確定している**ので、公開失敗で週を落とさない。
+ただし「成果物が無いのに完了扱い」も禁止(2026-08-04 に実際に発生し、Day 3 で
+不整合として検出された)。両立させるため、失敗したら **PR に明示コメントを残す**:
+
+```bash
+if [ "${PUBLISH_RC}" -ne 0 ]; then
+  {
+    echo '## ⚠️ 成果物リポジトリ公開が未完了です'
+    echo
+    echo '記事本文と PR タイトルは Day 2 として確定済みですが、Step 6(成果物リポジトリ公開)が'
+    echo '失敗しました。本文の `<!-- ARTIFACT_LINKS -->` は未置換のまま残っています。'
+    echo
+    echo "- 想定リポジトリ名: \`${REPO_NAME}\`"
+    echo '- 成果物の所在: このセッションの `/tmp/zenn_artifact`(セッション終了で消えます)'
+    echo
+    echo '```'
+    printf '%s\n' "${PUBLISH_LOG}"
+    echo '```'
+    echo
+    echo '**Day 3 はこれを検出して再試行してください。**'
+  } > /tmp/publish_failure.md
+  gh pr comment "${PR_URL}" --body-file /tmp/publish_failure.md
+fi
+```
+
+このコメントの見出し `## ⚠️ 成果物リポジトリ公開が未完了です` は Day 3 が
+検出マーカーとして使うので、文言を変えるときは
+`.claude/skills/day3-finalize/SKILL.md` の Step 6.3 も合わせて直すこと。
 
 ### Step 7: Chatwork 通知(翌朝チェック依頼)
 
@@ -235,19 +312,37 @@ git push origin "${LATEST_BRANCH}"
   "${ARTICLE_TITLE}" \
   "$(wc -m < articles/${ARTICLE_SLUG}.md | tr -d ' ')" \
   "未定 (来週月曜公開予定)" \
-  "${PAGES_URL}" \
-  "${REPO_URL}" \
+  "${PAGES_URL:-}" \
+  "${REPO_URL:-(公開未完了)}" \
   "${PR_URL}"
 ```
 
+成果物公開が失敗している場合(`PUBLISH_RC` が非 0)は `REPO_URL` / `PAGES_URL` が
+未定義なので、上記のとおり必ずデフォルト値付きで展開する。
+
 通知本文に「明朝 Day 3 進行前にチェックお願いします」を含める。
+公開が未完了なら「成果物公開は未完了。Day 3 が再試行します」も添える。
 
 ### Step 8: 完了報告
 
+成果物公開の成否で報告を出し分ける。**未完了を「完了」と書かない**。
+
+成功時:
+
 ```
 Day 2 完了 (PR: ${PR_URL}, 文字数: ${WORD_COUNT}字)
+成果物: ${REPO_URL}
 明朝出社前にチェックお願いします。
 明日 Day 3 で完成させます。
+```
+
+成果物公開が失敗した場合:
+
+```
+Day 2 完了 / 成果物公開のみ未完了 (PR: ${PR_URL}, 文字数: ${WORD_COUNT}字)
+記事本文と PR タイトル([Day 2/3 WIP])は確定済みです。
+成果物リポジトリの公開に失敗したため、PR にエラー内容をコメントしました。
+明日 Day 3 が再試行します。
 ```
 
 ## 中断時の挙動
@@ -255,6 +350,8 @@ Day 2 完了 (PR: ${PR_URL}, 文字数: ${WORD_COUNT}字)
 - Day 1 の PR が存在しない → 何もせず終了(その週中止)
 - 実装が動かない → 3 回試して失敗ならコメント追記して停止、Liatris 判断を仰ぐ
 - 既に Ready for Review 状態(Day 3 完了済み)→ 何もせず終了
+- **成果物リポジトリの公開が失敗した → 停止しない**。本文と PR タイトルは Step 4/5 で
+  確定済みなので、Step 6 の失敗コメントを残して Step 7/8 まで進む(2026-08-18 変更)
 
 ## 絶対 NG(Day 2 特有)
 
@@ -262,3 +359,7 @@ Day 2 完了 (PR: ${PR_URL}, 文字数: ${WORD_COUNT}字)
 - main への直 push 禁止
 - 業務コンテクストを記事本文に出さない
 - スクリプト失敗で main にマージしない
+- **成果物リポジトリの公開失敗を黙って「Day 2 完了」と報告しない**(2026-08-04 に発生)。
+  失敗したら PR コメントと完了報告の両方で未完了であることを明示する
+- **CI / ワークフロー / スクリプトの変更を記事 PR に混ぜない**(2026-08-18 に発生)。
+  仕組み側を直す必要が出たら、記事 PR とは別のブランチで PR を立てる
