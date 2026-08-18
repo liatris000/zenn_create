@@ -1,16 +1,35 @@
 name: 成果物リポジトリ公開
-run-name: "publish-artifact ${{ github.event.client_payload.repo_name }} (${{ github.event.client_payload.dispatch_id }})"
+run-name: "publish-artifact ${{ github.event.client_payload.repo_name || github.event.inputs.repo_name }} (${{ github.event.client_payload.dispatch_id || github.run_id }})"
 
 # routine セッションからは POST /user/repos が通らない（セッションが zenn_create に
 # スコープ固定され、repos/{owner}/{repo}/... 以外のパスをプロキシが拒否する）。
 # そのため新規リポジトリ作成はプロキシ外の Actions 側で行い、routine 側は
 # 「一時ブランチへの push」と「dispatches」という repo-scoped な操作だけを行う。
 #
-# 起動元: scripts/publish-artifact.sh
+# 起動元: scripts/publish-artifact.sh (repository_dispatch)
+#
+# workflow_dispatch は 2026-08-18 に追加したフォールバック経路。
+# routine セッションのプロキシが repository_dispatch そのものを弾くケースがあり、
+# その場合の手動 / MCP 経由の起動用（同じ入力を Actions の Run workflow UI からも渡せる）。
 
 on:
   repository_dispatch:
     types: [publish-artifact]
+  workflow_dispatch:
+    inputs:
+      repo_name:
+        description: "成果物リポジトリ名"
+        required: true
+      article_title:
+        description: "記事タイトル"
+        required: true
+      artifact_branch:
+        description: "成果物が push 済みの一時ブランチ (artifact/... )"
+        required: true
+      enable_pages:
+        description: "GitHub Pages を有効化するか"
+        required: false
+        default: "true"
 
 # 一時ブランチ artifact/* の削除に必要
 permissions:
@@ -21,11 +40,31 @@ jobs:
     name: 成果物リポジトリの作成と push
     runs-on: ubuntu-latest
     steps:
+      - name: 入力を正規化する (repository_dispatch / workflow_dispatch 両対応)
+        id: normalize
+        env:
+          CP_REPO_NAME: ${{ github.event.client_payload.repo_name }}
+          CP_ARTICLE_TITLE: ${{ github.event.client_payload.article_title }}
+          CP_ARTIFACT_BRANCH: ${{ github.event.client_payload.artifact_branch }}
+          CP_ENABLE_PAGES: ${{ github.event.client_payload.enable_pages }}
+          WD_REPO_NAME: ${{ github.event.inputs.repo_name }}
+          WD_ARTICLE_TITLE: ${{ github.event.inputs.article_title }}
+          WD_ARTIFACT_BRANCH: ${{ github.event.inputs.artifact_branch }}
+          WD_ENABLE_PAGES: ${{ github.event.inputs.enable_pages }}
+        run: |
+          set -euo pipefail
+          {
+            echo "repo_name=${CP_REPO_NAME:-${WD_REPO_NAME:-}}"
+            echo "article_title=${CP_ARTICLE_TITLE:-${WD_ARTICLE_TITLE:-}}"
+            echo "artifact_branch=${CP_ARTIFACT_BRANCH:-${WD_ARTIFACT_BRANCH:-}}"
+            echo "enable_pages=${CP_ENABLE_PAGES:-${WD_ENABLE_PAGES:-true}}"
+          } >> "$GITHUB_OUTPUT"
+
       - name: 入力を検証する
         env:
-          REPO_NAME: ${{ github.event.client_payload.repo_name }}
-          ARTIFACT_BRANCH: ${{ github.event.client_payload.artifact_branch }}
-          ENABLE_PAGES: ${{ github.event.client_payload.enable_pages }}
+          REPO_NAME: ${{ steps.normalize.outputs.repo_name }}
+          ARTIFACT_BRANCH: ${{ steps.normalize.outputs.artifact_branch }}
+          ENABLE_PAGES: ${{ steps.normalize.outputs.enable_pages }}
         run: |
           set -euo pipefail
           # シェル・URL に埋め込む値なので形式を厳格に検証する
@@ -62,7 +101,7 @@ jobs:
       - name: 一時ブランチをチェックアウトする
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.client_payload.artifact_branch }}
+          ref: ${{ steps.normalize.outputs.artifact_branch }}
           path: artifact
 
       - name: 成果物の NG ワード検査
@@ -78,8 +117,8 @@ jobs:
         id: publish
         env:
           PAT: ${{ secrets.ARTIFACT_PUBLISH_TOKEN }}
-          REPO_NAME: ${{ github.event.client_payload.repo_name }}
-          ARTICLE_TITLE: ${{ github.event.client_payload.article_title }}
+          REPO_NAME: ${{ steps.normalize.outputs.repo_name }}
+          ARTICLE_TITLE: ${{ steps.normalize.outputs.article_title }}
           GH_USER: ${{ github.repository_owner }}
         run: |
           set -euo pipefail
@@ -119,10 +158,10 @@ jobs:
           echo "file_count=$(git ls-files | wc -l)" >> "$GITHUB_OUTPUT"
 
       - name: GitHub Pages を有効化する
-        if: ${{ github.event.client_payload.enable_pages == 'true' }}
+        if: ${{ steps.normalize.outputs.enable_pages == 'true' }}
         env:
           PAT: ${{ secrets.ARTIFACT_PUBLISH_TOKEN }}
-          REPO_NAME: ${{ github.event.client_payload.repo_name }}
+          REPO_NAME: ${{ steps.normalize.outputs.repo_name }}
           GH_USER: ${{ github.repository_owner }}
         run: |
           set -euo pipefail
@@ -144,7 +183,7 @@ jobs:
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
-          ARTIFACT_BRANCH: ${{ github.event.client_payload.artifact_branch }}
+          ARTIFACT_BRANCH: ${{ steps.normalize.outputs.artifact_branch }}
         run: |
           set -euo pipefail
           # 失敗時も消す。残すと次回の push -f まで zenn_create に無関係な履歴が残るため
@@ -157,9 +196,9 @@ jobs:
       - name: サマリを出力する
         if: always()
         env:
-          REPO_NAME: ${{ github.event.client_payload.repo_name }}
+          REPO_NAME: ${{ steps.normalize.outputs.repo_name }}
           GH_USER: ${{ github.repository_owner }}
-          ENABLE_PAGES: ${{ github.event.client_payload.enable_pages }}
+          ENABLE_PAGES: ${{ steps.normalize.outputs.enable_pages }}
         run: |
           {
             echo "## 成果物リポジトリ公開"
