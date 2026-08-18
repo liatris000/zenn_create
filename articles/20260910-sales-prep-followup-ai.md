@@ -152,4 +152,6 @@ def test_generate_briefing_parses_structured_output():
 
 ## 成果物
 
-<!-- ARTIFACT_LINKS -->
+@[github](https://github.com/liatris000/liatris-20260910-sales-prep-followup-ai)
+
+デモ: https://liatris000.github.io/liatris-20260910-sales-prep-followup-ai/
