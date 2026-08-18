@@ -1,18 +1,43 @@
 name: 成果物リポジトリ公開
-run-name: "publish-artifact ${{ github.event.client_payload.repo_name }} (${{ github.event.client_payload.dispatch_id }})"
+run-name: "publish-artifact ${{ github.ref_name }}"
 
-# routine セッションからは POST /user/repos が通らない（セッションが zenn_create に
-# スコープ固定され、repos/{owner}/{repo}/... 以外のパスをプロキシが拒否する）。
-# そのため新規リポジトリ作成はプロキシ外の Actions 側で行い、routine 側は
-# 「一時ブランチへの push」と「dispatches」という repo-scoped な操作だけを行う。
+# ─── なぜ push トリガーなのか ────────────────────────────────────────
+# routine セッション（スケジュール実行される Claude Code）からは、GitHub API 経由で
+# Actions を起動できない。
+#
+#   - 2026-05-05 以前: routine が直接 `POST /user/repos` を叩いてリポジトリを作っていたが
+#     これが通らなくなり、以降のサイクルはここで停止していた
+#   - 2026-08-11: リポジトリ作成を Actions 側へ逃がし、起動を repository_dispatch にした
+#   - 2026-08-18: その repository_dispatch も
+#     `repository_dispatch is not permitted for this session type.` (HTTP 403) で拒否された。
+#     パススコープの問題ではなく「エージェントに CI を起動させない」という名指しの
+#     ポリシーブロックなので、別の dispatch endpoint に替えても再発しうる
+#
+# そこで起動を API から git に寄せた。routine セッションからの `git push` は
+# 実績がある（2026-08-18 の Day 2 セッションが claude/admiring-ride-oxh6vk へ push し、
+# run 32083231642 / 32085629810 が event=push で起動している）。
+#
+# 一時ブランチ artifact/<repo-name> は **main 起点**で作り、成果物を `_artifact/` に置く。
+# push イベントのワークフローは「押されたブランチ側のファイル」が使われるため、
+# 成果物だけの孤立ブランチではワークフローが載っておらず起動しない（実際 2026-08-18 の
+# 孤立ブランチ push では ng-word-scan すら走っていない）。main 起点にすることで解決する。
+#
+# 副作用: main 起点なので ng-word-scan.yml (push: '**') も一時ブランチで走るようになる。
+# これは想定内。ゲートではなく、ブランチは公開完了後に削除される。
+#
+# 結果は artifact-result/<repo-name> ブランチに書き戻す。呼び出し元は git ls-remote だけで
+# 成否を判定できるので、公開フロー全体が GitHub API に一切依存しない。
 #
 # 起動元: scripts/publish-artifact.sh
+# 手動再実行: Actions の Run workflow から artifact/<repo-name> ブランチを選ぶ
 
 on:
-  repository_dispatch:
-    types: [publish-artifact]
+  push:
+    branches:
+      - 'artifact/**'
+  workflow_dispatch: {}
 
-# 一時ブランチ artifact/* の削除に必要
+# 一時ブランチ artifact/* の削除と artifact-result/* の作成に必要
 permissions:
   contents: write
 
@@ -21,11 +46,42 @@ jobs:
     name: 成果物リポジトリの作成と push
     runs-on: ubuntu-latest
     steps:
+      - name: 一時ブランチをチェックアウトする
+        uses: actions/checkout@v5
+
+      # main 起点なので scripts/ も _artifact/ も同じチェックアウトに入っている。
+      # 以前のように default branch と成果物ブランチを二重にチェックアウトする必要はない。
+      - name: メタデータを解決する
+        id: meta
+        run: |
+          set -euo pipefail
+          # repo_name はブランチ名から導出する（artifact/<repo-name>）。
+          # 入力経路を1本にすることで push / workflow_dispatch の分岐を無くしている。
+          REPO_NAME="${GITHUB_REF_NAME#artifact/}"
+          if [ "${REPO_NAME}" = "${GITHUB_REF_NAME}" ]; then
+            echo "::error::artifact/ 配下のブランチで実行してください: ${GITHUB_REF_NAME}"
+            exit 1
+          fi
+
+          META=".artifact-publish.json"
+          if [ ! -f "${META}" ]; then
+            echo "::error::${META} がブランチに含まれていません"
+            exit 1
+          fi
+          ARTICLE_TITLE=$(jq -r '.article_title // ""' "${META}")
+          ENABLE_PAGES=$(jq -r '.enable_pages // "true"' "${META}")
+
+          {
+            echo "repo_name=${REPO_NAME}"
+            echo "article_title=${ARTICLE_TITLE}"
+            echo "enable_pages=${ENABLE_PAGES}"
+          } >> "$GITHUB_OUTPUT"
+
       - name: 入力を検証する
         env:
-          REPO_NAME: ${{ github.event.client_payload.repo_name }}
-          ARTIFACT_BRANCH: ${{ github.event.client_payload.artifact_branch }}
-          ENABLE_PAGES: ${{ github.event.client_payload.enable_pages }}
+          REPO_NAME: ${{ steps.meta.outputs.repo_name }}
+          ARTICLE_TITLE: ${{ steps.meta.outputs.article_title }}
+          ENABLE_PAGES: ${{ steps.meta.outputs.enable_pages }}
         run: |
           set -euo pipefail
           # シェル・URL に埋め込む値なので形式を厳格に検証する
@@ -33,14 +89,18 @@ jobs:
             echo "::error::repo_name の形式が不正です: ${REPO_NAME}"
             exit 1
           fi
-          if ! printf '%s' "${ARTIFACT_BRANCH}" | grep -qE '^artifact/[A-Za-z0-9][A-Za-z0-9._/-]{0,99}$'; then
-            echo "::error::artifact_branch は artifact/ 配下である必要があります: ${ARTIFACT_BRANCH}"
+          if [ -z "${ARTICLE_TITLE}" ]; then
+            echo "::error::article_title が空です"
             exit 1
           fi
           case "${ENABLE_PAGES}" in
-            true|false|"") ;;
+            true|false) ;;
             *) echo "::error::enable_pages は true / false のみ: ${ENABLE_PAGES}"; exit 1 ;;
           esac
+          if [ ! -d "_artifact" ]; then
+            echo "::error::_artifact/ がブランチに含まれていません"
+            exit 1
+          fi
           echo "✅ 入力検証 OK"
 
       - name: PAT の存在を確認する
@@ -56,30 +116,20 @@ jobs:
           fi
           echo "✅ PAT 設定済み"
 
-      - name: スクリプト取得のため default branch をチェックアウトする
-        uses: actions/checkout@v5
-
-      - name: 一時ブランチをチェックアウトする
-        uses: actions/checkout@v5
-        with:
-          ref: ${{ github.event.client_payload.artifact_branch }}
-          path: artifact
-
       - name: 成果物の NG ワード検査
         env:
           NG_WORDS: ${{ secrets.NG_WORDS }}
         run: |
           set -euo pipefail
-          # 成果物は Public リポへ直行するが、従来の NG ワード検査は articles/ books/ しか
-          # 見ておらず素通りだった。公開前にここで塞ぐ (fail-closed)
-          bash scripts/ng-word-scan.sh artifact
+          # 成果物は Public リポへ直行するので、公開前にここで塞ぐ (fail-closed)
+          bash scripts/ng-word-scan.sh _artifact
 
       - name: 成果物リポジトリを作成して push する
         id: publish
         env:
           PAT: ${{ secrets.ARTIFACT_PUBLISH_TOKEN }}
-          REPO_NAME: ${{ github.event.client_payload.repo_name }}
-          ARTICLE_TITLE: ${{ github.event.client_payload.article_title }}
+          REPO_NAME: ${{ steps.meta.outputs.repo_name }}
+          ARTICLE_TITLE: ${{ steps.meta.outputs.article_title }}
           GH_USER: ${{ github.repository_owner }}
         run: |
           set -euo pipefail
@@ -103,7 +153,9 @@ jobs:
           fi
 
           # --- 成果物を push（履歴は作らず初回コミットのみ） ---
-          cd artifact
+          # 公開されるリポジトリの中身は _artifact/ の直下。zenn_create 側の
+          # ファイル（articles/ や .github/ 等）は一切持ち込まない
+          cd _artifact
           rm -rf .git
           git init -q
           git checkout -q -b main
@@ -119,10 +171,10 @@ jobs:
           echo "file_count=$(git ls-files | wc -l)" >> "$GITHUB_OUTPUT"
 
       - name: GitHub Pages を有効化する
-        if: ${{ github.event.client_payload.enable_pages == 'true' }}
+        if: ${{ steps.meta.outputs.enable_pages == 'true' }}
         env:
           PAT: ${{ secrets.ARTIFACT_PUBLISH_TOKEN }}
-          REPO_NAME: ${{ github.event.client_payload.repo_name }}
+          REPO_NAME: ${{ steps.meta.outputs.repo_name }}
           GH_USER: ${{ github.repository_owner }}
         run: |
           set -euo pipefail
@@ -140,26 +192,76 @@ jobs:
               ;;
           esac
 
-      - name: 一時ブランチを削除する
+      - name: 結果を artifact-result/ ブランチへ書き戻す
         if: always()
         env:
+          # GITHUB_TOKEN で push する。この token による push はワークフローを起動しないので
+          # 結果ブランチが ng-word-scan.yml (push: '**') を無駄に走らせることがない
           GH_TOKEN: ${{ github.token }}
-          ARTIFACT_BRANCH: ${{ github.event.client_payload.artifact_branch }}
+          REPO_NAME: ${{ steps.meta.outputs.repo_name }}
+          GH_USER: ${{ github.repository_owner }}
+          ENABLE_PAGES: ${{ steps.meta.outputs.enable_pages }}
+          PUBLISH_OUTCOME: ${{ steps.publish.outcome }}
+          FILE_COUNT: ${{ steps.publish.outputs.file_count }}
         run: |
           set -euo pipefail
-          # 失敗時も消す。残すと次回の push -f まで zenn_create に無関係な履歴が残るため
-          if gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${ARTIFACT_BRANCH}" 2>/dev/null; then
-            echo "✅ 一時ブランチ削除: ${ARTIFACT_BRANCH}"
+          # repo_name の解決前に落ちた場合は書き戻し先が決まらないので何もしない
+          # （呼び出し元は timeout で失敗を検出する）
+          if [ -z "${REPO_NAME}" ]; then
+            echo "::warning::repo_name が未解決のため結果を書き戻せません"
+            exit 0
+          fi
+
+          STATUS="failure"
+          [ "${PUBLISH_OUTCOME}" = "success" ] && STATUS="success"
+
+          PAGES_URL=""
+          if [ "${ENABLE_PAGES}" = "true" ] && [ "${STATUS}" = "success" ]; then
+            PAGES_URL="https://${GH_USER}.github.io/${REPO_NAME}/"
+          fi
+
+          RESULT_DIR=$(mktemp -d)
+          jq -n \
+            --arg status "${STATUS}" \
+            --arg repo_url "https://github.com/${GH_USER}/${REPO_NAME}" \
+            --arg pages_url "${PAGES_URL}" \
+            --arg run_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --arg file_count "${FILE_COUNT:-0}" \
+            '{status:$status, repo_url:$repo_url, pages_url:$pages_url, run_url:$run_url, file_count:$file_count}' \
+            > "${RESULT_DIR}/result.json"
+
+          cd "${RESULT_DIR}"
+          git init -q
+          git checkout -q -b result
+          git -c user.email=noreply@anthropic.com -c user.name=Claude add -A
+          git -c user.email=noreply@anthropic.com -c user.name=Claude \
+            commit -q -m "publish-artifact result: ${REPO_NAME} (${STATUS})"
+          git push -q -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            "result:refs/heads/artifact-result/${REPO_NAME}"
+          echo "✅ 結果を書き戻し: artifact-result/${REPO_NAME} (${STATUS})"
+
+      - name: 一時ブランチを削除する
+        # 成功時のみ削除する。失敗時に残すのは、Day 3 が再試行する際の成果物の置き場が
+        # ここしかないため（Day 3 は別セッションなので Day 2 の /tmp/zenn_artifact は
+        # 残っていない）。scripts/retry-artifact-publish.sh がこのブランチへ空コミットを
+        # push して再起動する。main 起点なので放置しても無関係な履歴にはならない
+        if: ${{ steps.publish.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${GITHUB_REF_NAME}" 2>/dev/null; then
+            echo "✅ 一時ブランチ削除: ${GITHUB_REF_NAME}"
           else
-            echo "::warning::一時ブランチの削除に失敗（既に無い可能性）: ${ARTIFACT_BRANCH}"
+            echo "::warning::一時ブランチの削除に失敗（既に無い可能性）: ${GITHUB_REF_NAME}"
           fi
 
       - name: サマリを出力する
         if: always()
         env:
-          REPO_NAME: ${{ github.event.client_payload.repo_name }}
+          REPO_NAME: ${{ steps.meta.outputs.repo_name }}
           GH_USER: ${{ github.repository_owner }}
-          ENABLE_PAGES: ${{ github.event.client_payload.enable_pages }}
+          ENABLE_PAGES: ${{ steps.meta.outputs.enable_pages }}
         run: |
           {
             echo "## 成果物リポジトリ公開"

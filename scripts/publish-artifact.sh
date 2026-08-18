@@ -6,29 +6,36 @@
 #
 # 例:
 #   ./scripts/publish-artifact.sh "liatris-20260428-slack-bot" "/tmp/zenn_artifact" "Claude CodeでSlack Botを作る"
-#   ./scripts/publish-artifact.sh "liatris-20260428-slack-bot" "/tmp/zenn_artifact" "Claude CodeでSlack Botを作る" "true"
 #
-# 出力 (環境変数として export):
+# 出力 (呼び出し元が eval で拾う):
 #   REPO_URL  - GitHubリポジトリURL
 #   PAGES_URL - GitHub Pages URL (HTML系成果物の場合)
 #
 # 必要な環境変数:
 #   GITHUB_TOKEN  (またはGITHUB_ACCESS_TOKEN)
 #
-# ─── 動作方式 ────────────────────────────────────────────────────────
-# routine セッションからは `POST /user/repos` が通らない。セッションが zenn_create に
-# スコープ固定されており、`repos/{owner}/{repo}/...` 以外のパスをプロキシが拒否するため
-# (2026-05-05 の成功を最後に、以降のサイクルはここで停止していた)。
-# トークンの権限問題ではないので、より強い PAT を渡しても解消しない。
+# ─── 動作方式 (2026-08-18 変更) ──────────────────────────────────────
+# routine セッションからは GitHub API 経由で Actions を起動できない。
 #
-# そこで新規リポジトリ作成はプロキシ外の GitHub Actions に委譲し、
-# 本スクリプトは repo-scoped な操作だけを行う:
+#   - `POST /user/repos` は 2026-05-05 を最後に通らなくなった
+#   - 代替に据えた `repository_dispatch` も 2026-08-18 に
+#     `repository_dispatch is not permitted for this session type.` (403) で拒否された。
+#     「エージェントに CI を起動させない」という名指しのポリシーなので、
+#     別の dispatch endpoint に替えても再発しうる
 #
-#   1. 成果物を zenn_create の一時ブランチ artifact/<repo-name> へ push
-#   2. repository_dispatch で .github/workflows/publish-artifact.yml を起動
-#   3. その run の完了を polling して結果を判定
+# そこで起動経路を API から git に寄せた。本スクリプトが使う GitHub 操作は
+# **git push / git ls-remote / git fetch だけ**で、GitHub API を一切叩かない。
 #
-# 呼び出し側 (Day 2 SKILL Step 4) のインタフェースは従来と同じ。
+#   1. 一時ブランチ artifact/<repo-name> を **main 起点**で作り、成果物を `_artifact/` に
+#      置いて push する。main 起点なのは、push イベントのワークフローが
+#      「押されたブランチ側のファイル」で動くため。成果物だけの孤立ブランチでは
+#      ワークフローが載っておらず起動しない (2026-08-18 に実際そうなった)
+#   2. .github/workflows/publish-artifact.yml が push で起動し、PAT で新規リポジトリを
+#      作成・push・Pages 有効化し、一時ブランチを削除する
+#   3. Actions が結果を artifact-result/<repo-name> ブランチへ書き戻す
+#   4. 本スクリプトは git ls-remote でそれを polling して成否を判定し、読んだら削除する
+#
+# 呼び出し側 (Day 2 SKILL) のインタフェースは従来と同じ。
 
 set -euo pipefail
 
@@ -43,62 +50,74 @@ if [[ -z "${REPO_NAME}" || -z "${LOCAL_DIR}" || -z "${ARTICLE_TITLE}" ]]; then
   exit 1
 fi
 
-# トークン解決 (GITHUB_TOKEN または GITHUB_ACCESS_TOKEN)
-TOKEN="${GITHUB_TOKEN:-${GITHUB_ACCESS_TOKEN:-}}"
-if [[ -z "${TOKEN}" ]]; then
-  echo "❌ GITHUB_TOKEN (または GITHUB_ACCESS_TOKEN) が未設定です" >&2
-  exit 1
-fi
-
-GITHUB_USER="${GITHUB_USER:-liatris000}"
-# dispatch 先 = このリポジトリ。fork 運用時は環境変数で上書きする
-DISPATCH_REPO="${DISPATCH_REPO:-${GITHUB_USER}/zenn_create}"
-# Actions の完了待ち上限 (秒)
-POLL_TIMEOUT="${PUBLISH_ARTIFACT_TIMEOUT:-900}"
-POLL_INTERVAL=10
+# shellcheck source=scripts/lib/artifact-publish.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/artifact-publish.sh"
 
 if [[ ! -d "${LOCAL_DIR}" ]]; then
   echo "❌ ローカルディレクトリが存在しません: ${LOCAL_DIR}" >&2
   exit 1
 fi
 
-# Actions 側の検証と同じ形式チェックを手元でも行う (dispatch する前に落とす)
+# Actions 側の検証と同じ形式チェックを手元でも行う (push する前に落とす)
 if ! printf '%s' "${REPO_NAME}" | grep -qE '^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$'; then
   echo "❌ リポジトリ名の形式が不正です: ${REPO_NAME}" >&2
   exit 1
 fi
+case "${ENABLE_PAGES}" in
+  true|false) ;;
+  *) echo "❌ enable_pages は true / false のみ: ${ENABLE_PAGES}" >&2; exit 1 ;;
+esac
 
-ARTIFACT_BRANCH="artifact/${REPO_NAME}"
-DISPATCH_ID="$(date +%Y%m%d%H%M%S)-$$"
+ap_init "${REPO_NAME}"
 
-api() {
-  # $1=method $2=path ; body は stdin
-  curl -sS -X "$1" \
-    -H "Authorization: token ${TOKEN}" \
-    -H "Accept: application/vnd.github+json" \
-    "https://api.github.com/$2" "${@:3}"
+TMPTREE="$(mktemp -d)"
+cleanup() {
+  git -C "${AP_REPO_ROOT}" worktree remove --force "${TMPTREE}" >/dev/null 2>&1 || true
+  rm -rf "${TMPTREE}"
 }
+trap cleanup EXIT
 
-# ─── 1. 成果物を一時ブランチへ push ────────────────────────────────
-echo "📦 成果物を一時ブランチへ push: ${ARTIFACT_BRANCH}"
-WORK_DIR="$(mktemp -d)"
-trap 'rm -rf "${WORK_DIR}"' EXIT
+# ─── 0. 前回の結果ブランチを消す ───────────────────────────────────
+ap_clear_result
 
-cp -R "${LOCAL_DIR}/." "${WORK_DIR}/"
-cd "${WORK_DIR}"
+# ─── 1. 一時ブランチを main 起点で組み立てて push ──────────────────
+echo "📦 一時ブランチを組み立て: ${AP_ARTIFACT_BRANCH} (main 起点)"
+git -C "${AP_REPO_ROOT}" fetch -q "${AP_REMOTE}" main
+git -C "${AP_REPO_ROOT}" worktree add -q --detach "${TMPTREE}" FETCH_HEAD
+
+mkdir -p "${TMPTREE}/_artifact"
+cp -R "${LOCAL_DIR}/." "${TMPTREE}/_artifact/"
+rm -rf "${TMPTREE}/_artifact/.git"
 
 # _claude_template/ → .claude/ に展開
 # Claude が .claude/ パスに直接書けない仕様への対処
-if [[ -d "${WORK_DIR}/_claude_template" ]]; then
+if [[ -d "${TMPTREE}/_artifact/_claude_template" ]]; then
   echo "📁 _claude_template/ を .claude/ に展開中..."
-  mkdir -p "${WORK_DIR}/.claude"
-  cp -R "${WORK_DIR}/_claude_template/." "${WORK_DIR}/.claude/"
-  rm -rf "${WORK_DIR}/_claude_template"
+  mkdir -p "${TMPTREE}/_artifact/.claude"
+  cp -R "${TMPTREE}/_artifact/_claude_template/." "${TMPTREE}/_artifact/.claude/"
+  rm -rf "${TMPTREE}/_artifact/_claude_template"
   echo "✅ .claude/ に配置完了"
 fi
 
-git init -q
-git checkout -q -b "${ARTIFACT_BRANCH}"
+# メタデータ (repo_name はブランチ名から導出するので持たない)
+jq -n --arg title "${ARTICLE_TITLE}" --arg pages "${ENABLE_PAGES}" \
+  '{article_title:$title, enable_pages:$pages}' > "${TMPTREE}/.artifact-publish.json"
+
+cd "${TMPTREE}"
+
+# main 起点にした副作用として、main の .gitignore が _artifact/ にも効く。
+# 黙って落ちると「公開リポにファイルが足りない」事故になるので fail-closed にする。
+# .env / *.key 等が引っかかった場合は成果物側から取り除くのが正しい対処
+IGNORED="$(git ls-files --others --ignored --exclude-standard -- _artifact || true)"
+if [[ -n "${IGNORED}" ]]; then
+  echo "❌ .gitignore に一致するファイルが成果物に含まれています。公開リポに入らないため停止します:" >&2
+  printf '%s\n' "${IGNORED}" | sed 's/^/   - /' >&2
+  echo "   ビルド成果物なら成果物ディレクトリから除外し、機密ファイルなら削除してください" >&2
+  exit 1
+fi
+
+# ローカルブランチは作らず detached HEAD のままコミットして push する。
+# 同名のローカルブランチが別の worktree で checkout されていると switch が失敗するため
 git add -A
 if git diff --cached --quiet; then
   echo "❌ 成果物が空です。push 対象がありません: ${LOCAL_DIR}" >&2
@@ -106,82 +125,21 @@ if git diff --cached --quiet; then
 fi
 git -c user.email=noreply@anthropic.com -c user.name=Claude \
   commit -q -m "artifact: ${REPO_NAME}"
-git push -q -f "https://${TOKEN}@github.com/${DISPATCH_REPO}.git" "${ARTIFACT_BRANCH}"
-echo "✅ push 完了 ($(git ls-files | wc -l | tr -d ' ') ファイル)"
 
-# 以降は zenn_create 側で作業するため元ディレクトリに戻る必要はない (API 操作のみ)
-
-# ─── 2. repository_dispatch で Actions を起動 ──────────────────────
-echo "🚀 Actions を起動: ${DISPATCH_REPO} (dispatch_id=${DISPATCH_ID})"
-payload=$(jq -nc \
-  --arg repo "${REPO_NAME}" \
-  --arg title "${ARTICLE_TITLE}" \
-  --arg branch "${ARTIFACT_BRANCH}" \
-  --arg pages "${ENABLE_PAGES}" \
-  --arg did "${DISPATCH_ID}" \
-  '{event_type:"publish-artifact", client_payload:{repo_name:$repo, article_title:$title, artifact_branch:$branch, enable_pages:$pages, dispatch_id:$did}}')
-
-code=$(curl -sS -o /tmp/dispatch.json -w '%{http_code}' -X POST \
-  -H "Authorization: token ${TOKEN}" \
-  -H "Accept: application/vnd.github+json" \
-  "https://api.github.com/repos/${DISPATCH_REPO}/dispatches" \
-  -d "${payload}")
-
-if [[ "${code}" != "204" ]]; then
-  echo "❌ dispatch に失敗しました (HTTP ${code})" >&2
-  cat /tmp/dispatch.json >&2 2>/dev/null || true
-  echo "   一時ブランチが残っています: ${ARTIFACT_BRANCH}" >&2
-  exit 1
-fi
-echo "✅ dispatch 送信"
-
-# ─── 3. run の完了を待つ ───────────────────────────────────────────
-echo "⏳ Actions の完了を待機中 (最大 $((POLL_TIMEOUT / 60)) 分)..."
-elapsed=0
-run_id=""
-conclusion=""
-
-while (( elapsed < POLL_TIMEOUT )); do
-  sleep "${POLL_INTERVAL}"
-  elapsed=$(( elapsed + POLL_INTERVAL ))
-
-  runs=$(api GET "repos/${DISPATCH_REPO}/actions/runs?event=repository_dispatch&per_page=30" || echo '{}')
-  # run-name に dispatch_id を埋めてあるので display_title で一意に特定できる
-  match=$(printf '%s' "${runs}" | jq -r --arg did "${DISPATCH_ID}" \
-    '[.workflow_runs[]? | select((.display_title // "") | contains($did))] | first // empty')
-
-  [[ -z "${match}" ]] && continue
-
-  run_id=$(printf '%s' "${match}" | jq -r '.id')
-  status=$(printf '%s' "${match}" | jq -r '.status')
-  conclusion=$(printf '%s' "${match}" | jq -r '.conclusion // ""')
-  [[ "${status}" == "completed" ]] && break
-done
-
-REPO_URL="https://github.com/${GITHUB_USER}/${REPO_NAME}"
-PAGES_URL=""
-[[ "${ENABLE_PAGES}" == "true" ]] && PAGES_URL="https://${GITHUB_USER}.github.io/${REPO_NAME}/"
-
-if [[ -z "${run_id}" ]]; then
-  echo "❌ 起動した Actions run を特定できませんでした (${elapsed}秒待機)" >&2
-  echo "   確認: https://github.com/${DISPATCH_REPO}/actions" >&2
-  exit 1
+if [[ -n "${PUBLISH_ARTIFACT_DRY_RUN:-}" ]]; then
+  echo "🧪 DRY RUN: push せずに終了します"
+  echo "   ブランチ内容 ($(git ls-files -- _artifact | wc -l | tr -d ' ') ファイル):"
+  git ls-files -- _artifact .artifact-publish.json | sed 's/^/     /'
+  exit 0
 fi
 
-RUN_URL="https://github.com/${DISPATCH_REPO}/actions/runs/${run_id}"
+git push -q -f "${AP_REMOTE}" "HEAD:refs/heads/${AP_ARTIFACT_BRANCH}"
+echo "✅ push 完了 ($(git ls-files -- _artifact | wc -l | tr -d ' ') ファイル)"
+echo "🚀 push により .github/workflows/publish-artifact.yml が起動します"
 
-if [[ "${conclusion}" != "success" ]]; then
-  echo "❌ 成果物リポジトリの公開に失敗しました (conclusion=${conclusion:-timeout})" >&2
-  echo "   run: ${RUN_URL}" >&2
-  exit 1
-fi
+cd "${AP_REPO_ROOT}"
 
-echo "✅ 公開完了"
-
-# 結果出力 (eval $(./scripts/publish-artifact.sh ...) で取り込める形式)
-echo ""
-echo "─── 結果 ───────────────────────────"
-echo "REPO_URL=${REPO_URL}"
-[[ -n "${PAGES_URL}" ]] && echo "PAGES_URL=${PAGES_URL}"
-echo "RUN_URL=${RUN_URL}"
-echo "────────────────────────────────────"
+# ─── 2. 結果ブランチを polling して成否判定 ────────────────────────
+ap_wait_for_result || exit 1
+ap_report_success
+exit 0
