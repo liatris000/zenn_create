@@ -124,6 +124,7 @@ payload=$(jq -nc \
 code=$(curl -sS -o /tmp/dispatch.json -w '%{http_code}' -X POST \
   -H "Authorization: token ${TOKEN}" \
   -H "Accept: application/vnd.github+json" \
+  -H "Content-Type: application/json" \
   "https://api.github.com/repos/${DISPATCH_REPO}/dispatches" \
   -d "${payload}")
 
