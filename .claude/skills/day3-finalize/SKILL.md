@@ -26,7 +26,16 @@ cd ~/zenn_create
 git pull origin main -q
 
 # Day 2 で更新された [Day 2/3 WIP] PR を PR タイトルで検索
-PR_INFO=$(gh pr list --state open --search '"[Day 2/3 WIP]" in:title' --json number,headRefName,url --limit 1)
+PR_INFO=$(gh pr list --state open --search '"[Day 2/3 WIP]" in:title' --json number,headRefName,url --limit 10)
+PR_COUNT=$(echo "${PR_INFO}" | python3 -c "import sys, json; print(len(json.load(sys.stdin)))")
+
+# 2 本以上ある場合は黙って先頭を取らず、停止する (day2 と同じガード)
+if [ "${PR_COUNT}" -gt 1 ]; then
+  echo "${PR_INFO}" | python3 -c "import sys, json; [print(f\"  #{d['number']} {d['url']}\") for d in json.load(sys.stdin)]"
+  echo "Day 3: [Day 2/3 WIP] の PR が ${PR_COUNT} 本あります。1 本に絞ってから再実行してください"
+  exit 0
+fi
+
 PR_NUMBER=$(echo "${PR_INFO}" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d[0]['number'] if d else '')")
 LATEST_BRANCH=$(echo "${PR_INFO}" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d[0]['headRefName'] if d else '')")
 PR_URL=$(echo "${PR_INFO}" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d[0]['url'] if d else '')")

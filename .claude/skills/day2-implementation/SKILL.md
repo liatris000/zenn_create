@@ -23,12 +23,31 @@ git pull origin main -q
 # Day 1 で作成された [Day 1/3 WIP] PR を PR タイトルで検索
 # (Routine 環境では Claude Code が自動的に claude/* ブランチを切るため、
 #  ブランチ名前提の検索ではなく PR タイトル前提の検索にする)
-PR_INFO=$(gh pr list --state open --search '"[Day 1/3 WIP]" in:title' --json number,headRefName,url --limit 1)
+PR_INFO=$(gh pr list --state open --search '"[Day 1/3 WIP]" in:title' --json number,headRefName,url --limit 10)
+PR_COUNT=$(echo "${PR_INFO}" | python3 -c "import sys, json; print(len(json.load(sys.stdin)))")
+
+# 2 本以上ある場合は黙って先頭を取らず、停止する
+if [ "${PR_COUNT}" -gt 1 ]; then
+  echo "${PR_INFO}" | python3 -c "import sys, json; [print(f\"  #{d['number']} {d['url']}\") for d in json.load(sys.stdin)]"
+  echo "Day 2: [Day 1/3 WIP] の PR が ${PR_COUNT} 本あります。1 本に絞ってから再実行してください"
+  exit 0
+fi
+
 PR_NUMBER=$(echo "${PR_INFO}" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d[0]['number'] if d else '')")
 LATEST_BRANCH=$(echo "${PR_INFO}" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d[0]['headRefName'] if d else '')")
 PR_URL=$(echo "${PR_INFO}" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d[0]['url'] if d else '')")
 export PR_URL
 ```
+
+#### 対象 PR が 2 本以上あるとき ⚠️ 必須
+
+`--limit 10` で取り、**2 本以上見つかったら黙って進まずに停止する**。
+先頭 1 件を取ると、どちらが選ばれたかが実行後に分からない。
+
+> 2026-09-14 に実際に発生した。対話セッションと cloud routine が並行して Day 1 を
+> 再実行し、同じ公開スロットに `[Day 1/3 WIP]` が 2 本開いた(#87 / #88)。
+> 当時の実装は `--limit 1` だったため、検知できる箇所が無かった。
+
 
 PR が見つからない場合(月曜サボった、Liatris が火曜朝に PR を close した等):
 
