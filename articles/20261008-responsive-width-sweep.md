@@ -91,6 +91,8 @@ async function refineBoundary(page, lo, hi, loBroken) {
 
 ## 成果物
 
-<!-- ARTIFACT_LINKS -->
+@[github](https://github.com/liatris000/liatris-20261008-responsive-width-sweep)
+
+デモ: https://liatris000.github.io/liatris-20261008-responsive-width-sweep/
 
 サンプルページと掃引スクリプトは上記リポジトリに置いてある。`npm install` して `npm run serve` でサンプルを立ち上げ、`npm run sweep` で掃引を実行できる。
