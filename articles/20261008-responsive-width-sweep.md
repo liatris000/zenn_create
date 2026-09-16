@@ -4,7 +4,7 @@ emoji: "📐"
 type: "tech"
 topics: ["playwright", "css", "frontend", "claudecode", "ai"]
 pattern: "implementation"
-published: false
+published: true
 published_at: "2026-10-08 07:00"
 cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20261008-responsive-width-sweep_thumbnail.png
 ---
