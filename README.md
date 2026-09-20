@@ -15,7 +15,7 @@ zenn_create/
 ├── business-profile/ # liatris-business-profile (Private) の submodule
 ├── .claude/          # Claude Code 用の設定 (権限・skill)
 ├── .github/          # PRテンプレート
-└── CLAUDE.md         # Claude Code が常時参照するリポジトリガイド
+└── AGENTS.md         # エージェントが常時参照するリポジトリガイド(Claude Code / Codex 共通)
 ```
 
 ### submodule について

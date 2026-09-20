@@ -219,7 +219,7 @@ git push origin main  # ※ 通常は PR 経由
 
 ### 既存記事のメンテナンス
 
-- 削除は禁止(`CLAUDE.md` ルール)
+- 削除は禁止(`AGENTS.md` ルール)
 - 軽微な修正(タイポ、リンク切れ修正)は記事追加と同じ流れで PR
 - frontmatter の `slug` 相当部分(ファイル名)も変更不可
 
