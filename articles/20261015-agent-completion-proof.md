@@ -91,6 +91,6 @@ def verify(tasks, reports, log_entries):
 
 ## 成果物
 
-<!-- ARTIFACT_LINKS -->
+@[github](https://github.com/liatris000/liatris-20261015-agent-completion-proof)
 
 テストは `python3 -m unittest discover -s tests` で4件通る。追加の依存ライブラリは無く、標準ライブラリのみで動く(Python 3.11.15 で確認)。
