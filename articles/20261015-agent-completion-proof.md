@@ -4,8 +4,9 @@ emoji: "🕵️"
 type: "tech"
 topics: ["claude", "claudeapi", "python", "agent", "ai"]
 pattern: "implementation"
-published: false
+published: true
 published_at: "2026-10-15 07:00"
+cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20261015-agent-completion-proof_thumbnail.png
 ---
 
 :::message
