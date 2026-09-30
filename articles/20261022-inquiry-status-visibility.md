@@ -4,8 +4,9 @@ emoji: "📬"
 type: "tech"
 topics: ["claude", "claudecode", "ai", "automation", "slack"]
 pattern: "implementation"
-published: false
+published: true
 published_at: "2026-10-22 07:00"
+cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20261022-inquiry-status-visibility_thumbnail.png
 ---
 
 :::message
