@@ -64,3 +64,9 @@ npx zenn preview   # http://localhost:8000
 | 副業申請状態 | `business-profile/policies/disclosure-rules.md`（横断テーブル） |
 
 `business-profile/` は `liatris-business-profile`(Private) の submodule。
+
+## PR / merge
+
+- `[Day 3/3 Ready for Review]` の PR で、記事の `published_at` が未来の日時で入っている場合だけ、gate（現在 HEAD の Codex clean 応答・未解決 review thread なし・CI green・merge 直前の HEAD 一致）を通過したら merge してよい（Claude Code / Codex 共通）。
+- `[Day 1/3]` `[Day 2/3]` の PR は merge しない。
+- merge しても公開は `published_at` の予約日時（約 3 週間先の週刊キュー）。`published_at` が無いと merge 即公開になるため merge しない。

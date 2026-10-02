@@ -195,7 +195,7 @@ cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/image
 
 注意:
 
-- `published: false` → `published: true` に反転する(下のコマンド)。週刊連載キューとして、マージされれば予約日時に自動公開される。公開判断はマージで人間が行う
+- `published: false` → `published: true` に反転する(下のコマンド)。週刊連載キューとして、マージされれば予約日時に自動公開される。merge してよいかは `AGENTS.md` の「PR / merge」節に従う
 - `published_at` は Day 1 で予約済みのスロットをそのまま使う(ここでは変更しない)。キューの順序が崩れるので勝手に動かさない
 
 ```bash
