@@ -166,4 +166,4 @@ image: 199高さpxで崩れ始める (overflow-y:meta)
 
 なお、LLM に「崩れやすい入力」を提案させる使い方は今回の実装には入れていない。境界値は機械的に作れる範囲で足りたためで、日本語の禁則や絵文字などの癖のある入力を探す段階で必要になりそうだ。
 
-<!-- ARTIFACT_LINKS -->
+@[github](https://github.com/liatris000/liatris-20261029-input-extremes-layout-check)
