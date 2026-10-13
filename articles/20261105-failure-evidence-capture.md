@@ -32,7 +32,7 @@ published_at: "2026-11-05 07:00"
 
 ## 実装
 
-<!-- ARTIFACT_LINKS -->
+@[github](https://github.com/liatris000/liatris-20261105-failure-evidence-capture)
 
 Bash + curl 8.5.0 で書いた。`-D` で応答ヘッダ、`-o` で本文、`-w` でステータスと所要時間を取る。失敗時は `evidence/<UTC日時>-<PID>/attempt-N/` に書き、最終的に失敗なら終了コード 1 を返す。
 
