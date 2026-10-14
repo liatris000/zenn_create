@@ -4,8 +4,9 @@ emoji: "🧾"
 type: "tech"
 topics: ["automation", "githubactions", "logging", "debugging", "claudecode"]
 pattern: "implementation"
-published: false
+published: true
 published_at: "2026-11-05 07:00"
+cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20261105-failure-evidence-capture_thumbnail.png
 ---
 
 :::message
