@@ -194,4 +194,4 @@ A が弾いたのは `schema` の3件だけで、`invented_value` の4件は全�
 
 ## 手元で動かす
 
-<!-- ARTIFACT_LINKS -->
+@[github](https://github.com/liatris000/liatris-20261112-structured-output-grounding-check)
