@@ -4,8 +4,9 @@ emoji: "🔎"
 type: "tech"
 topics: ["claudecode", "llm", "python", "validation", "ai"]
 pattern: "comparison"
-published: false
+published: true
 published_at: "2026-11-12 07:00"
+cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20261112-structured-output-grounding-check_thumbnail.png
 ---
 
 :::message
