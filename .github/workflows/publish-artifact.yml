@@ -240,6 +240,30 @@ jobs:
             "result:refs/heads/artifact-result/${REPO_NAME}"
           echo "✅ 結果を書き戻し: artifact-result/${REPO_NAME} (${STATUS})"
 
+      # 呼び出し元（routine）は結果を読んだあと結果ブランチを消すが、消せずに残ることがある
+      # （2026-10 に success の結果が 6 本残っていた。routine の git プロキシが ref の削除を
+      # 通さないか、polling が時間切れになったときに起きる）。呼び出し元に頼らず、ここで
+      # 1 日以上前の結果を片付ける。1 日待つのは、別の公開を polling 中の呼び出し元から
+      # 結果を奪わないため。
+      - name: 古い結果ブランチを片付ける
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/git/matching-refs/heads/artifact-result/" \
+            --jq '.[] | "\(.ref) \(.object.sha)"' | while read -r ref sha; do
+            age=$(gh api "repos/${GITHUB_REPOSITORY}/git/commits/${sha}" \
+              --jq '(now - (.committer.date | fromdateiso8601)) | floor')
+            if [ "${age}" -ge 86400 ]; then
+              if gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/${ref}" >/dev/null 2>&1; then
+                echo "🧹 削除: ${ref#refs/heads/}"
+              else
+                echo "::warning::古い結果ブランチを消せませんでした: ${ref#refs/heads/}"
+              fi
+            fi
+          done
+
       - name: 一時ブランチを削除する
         # 成功時のみ削除する。失敗時に残すのは、Day 3 が再試行する際の成果物の置き場が
         # ここしかないため（Day 3 は別セッションなので Day 2 の /tmp/zenn_artifact は

@@ -56,8 +56,11 @@ ap_wait_for_result() {
   git -C "${AP_REPO_ROOT}" fetch -q "${AP_REMOTE}" "${AP_RESULT_BRANCH}"
   local json
   json="$(git -C "${AP_REPO_ROOT}" show FETCH_HEAD:result.json)"
-  # 読んだら消す。残すと次回の polling が誤判定する
-  git -C "${AP_REPO_ROOT}" push -q "${AP_REMOTE}" --delete "${AP_RESULT_BRANCH}" >/dev/null 2>&1 || true
+  # 読んだら消す。残すと次回の polling が誤判定する。消せなくても公開は済んでいるので
+  # 止めないが、黙らない（残った分は publish-artifact.yml が 1 日後に片付ける）
+  if ! git -C "${AP_REPO_ROOT}" push -q "${AP_REMOTE}" --delete "${AP_RESULT_BRANCH}" >/dev/null 2>&1; then
+    echo "⚠️ 結果ブランチを消せませんでした: ${AP_RESULT_BRANCH}（次回以降の公開で自動的に片付きます）" >&2
+  fi
 
   AP_STATUS="$(printf '%s' "${json}" | jq -r '.status')"
   AP_REPO_URL="$(printf '%s' "${json}" | jq -r '.repo_url')"
