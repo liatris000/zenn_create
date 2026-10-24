@@ -25,10 +25,7 @@ jobs:
     # Dependabot は manifest / lockfile しか触らないので、ここでは skip して
     # main への push 時に secrets 付きで検査する (push トリガーは全ブランチ対象)。
     if: github.actor != 'dependabot[bot]'
-    # 既定は ubuntu-latest。hosted runner が使えない間だけ、リポジトリ変数 CI_RUNS_ON に
-    # '["self-hosted","macOS"]' を入れて Mac へ逃がす（戻すときは変数を消す）。
-    # 決まりは personal_dotfiles の docs/ci-runner-levers.md。
-    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-latest"') }}
+    runs-on: ubuntu-latest
     steps:
       - name: リポジトリをチェックアウト
         uses: actions/checkout@v4

@@ -44,10 +44,7 @@ permissions:
 jobs:
   publish:
     name: 成果物リポジトリの作成と push
-    # 既定は ubuntu-latest。hosted runner が使えない間だけ、リポジトリ変数 OPS_RUNS_ON に
-    # '["self-hosted","macOS"]' を入れて Mac へ逃がす（戻すときは変数を消す）。
-    # 決まりは personal_dotfiles の docs/ci-runner-levers.md。
-    runs-on: ${{ fromJSON(vars.OPS_RUNS_ON || '"ubuntu-latest"') }}
+    runs-on: ubuntu-latest
     steps:
       - name: 一時ブランチをチェックアウトする
         uses: actions/checkout@v5
