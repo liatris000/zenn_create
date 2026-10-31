@@ -21,9 +21,9 @@
   "author": "liatris",
   "license": "ISC",
   "dependencies": {
-    "zenn-cli": "^0.5.4"
+    "zenn-cli": "^0.5.8"
   },
   "devDependencies": {
-    "puppeteer": "^25.13.0"
+    "puppeteer": "^25.16.0"
   }
 }
