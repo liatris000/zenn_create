@@ -41,7 +41,11 @@ for path in sys.argv[1:]:
         if in_code:
             continue
         s = line.strip()
-        if not s or s.startswith(("#", "|", "-", "*", ">", "@[", "!", ":::")) or re.match(r"\d+\.", s):
+        # リストは「記号 + 空白」だけで判定する。行頭の * だけで判定すると、
+        # **太字** で始まる段落まで地の文から外れて数えられなくなる
+        is_list = re.match(r"([-*+]|\d+\.)\s", s) is not None
+        is_rule = re.fullmatch(r"(-{3,}|\*{3,}|_{3,})", s) is not None
+        if not s or is_list or is_rule or s.startswith(("#", "|", ">", "@[", "!", ":::")):
             if current:
                 paragraphs.append(current)
             current = []
