@@ -266,6 +266,18 @@ fi
 - [ ] 成果物リポジトリの README に、前提・動かし方・期待される出力・確かめていない範囲・記事へのリンクがある(Day 2 SKILL の「成果物リポジトリの README に必ず書くこと」)
 - [ ] **定性的な順位主張に計測根拠があるか**: 「最も効いた」「一番効果があった」「劇的に改善」「圧倒的に速い」等の主張は、計測値・比較データが本文中で示されているか。示せないなら表現を弱める(「印象に残った」「個人的に効いた」等)
 
+#### 6.1.5 本文の推敲 (yomiyasu-mini)
+
+6.1 のチェックリストを通したあと、本文の地の文を 1 回だけ推敲する。
+
+- `.claude/skills/yomiyasu-mini/SKILL.md` を読み、「yomiyasu-mini で推敲する」と名前を出して、その手順に従う(このスキルは名前を出して頼まれたときだけ動く作り)
+- 対象は frontmatter と冒頭の `:::message` ブロックを除いた本文。文書の種類は article
+- コードブロック・地の文のコード表記・識別子・数値・URL・画像は変えない
+- このリポジトリの決まりを yomiyasu-mini より優先する(`.claude/skills/yomiyasu-mini/NOTICE.md` の「このリポジトリでの使い方」)。特に、最後の「持ち帰れる一言」の段落は、本文の言い直しに見えても削らない
+- 推敲した本文は、いったん別のファイル(`/tmp/zenn_artifact/polished.md`)に保存し、`python3 .claude/skills/yomiyasu-mini/scripts/mini_check.py --source <推敲前の本文> --final /tmp/zenn_artifact/polished.md` を実行する。`meaning_risk` の候補は 1 つずつ確かめ、意味が変わっていれば元に戻す
+- 確かめた本文を記事ファイルに戻し、`bash scripts/article-readability-report.sh "articles/${ARTICLE_SLUG}.md"` をもう一度実行する。文の途中の改行が 0 のままで、長い文が増えていないことを確かめる
+- yomiyasu-mini が「書き手に確かめたい点」を出したら、Step 8 のチェックポイントに書く
+
 #### 6.2 アセット存在チェック (自動)
 
 ```bash
