@@ -7,6 +7,7 @@ Zenn 記事の管理リポジトリ。`articles/*.md` が main にマージさ�
 
 - 記事 slug: `YYYYMMDD-テーマ名`（例: `20260428-slack-bot`）。12〜50文字、英小文字/数字/ハイフン/アンダースコアのみ
 - **slug は公開後変更不可**（URL が変わり被リンクが死ぬ）
+- 例外: Zenn の Web エディタで書いた旧記事（2023〜2024 年。slug がランダムな 14 文字）は、Zenn のエクスポートから slug を変えずに同期する。命名規則・frontmatter の項目（`pattern`、`cover_image`）・冒頭の案内は当てはめない。本文も同期時に書き換えない
 - 画像: `{記事slug}_thumbnail.png`, `{記事slug}_screenshot.png`
 
 ## frontmatter
@@ -40,6 +41,7 @@ cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/image
 - 記事本文に業務文脈・関係者・取引先・パートナー・提携先を出さない
 - 本名「平野翔斗」を記事本文内に出さない（プロフィール表示は OK）
 - フィクションの数値（未計測の改善値等）を書かない
+- 例外: Web で書いた旧記事（slug がランダムな 14 文字）を Zenn のエクスポートからそのまま同期する場合は、上の 2 つ目（業務文脈を出さない）を当てはめない。本文は同じアカウントで Zenn に公開済みで、同期しても新しく公開される情報はない。Liatris が 2026-11-07 に、前の勤務先の名前が Public の git 履歴に残ることを承知で決めた。同期のときに業務の情報を書き足さない。新しく書く記事と、旧記事を書き換える場合には例外を使わない
 
 詳細は [`docs/cycle-overview.md`](./docs/cycle-overview.md) の「情報漏れ対策」。
 
@@ -70,3 +72,4 @@ npx zenn preview   # http://localhost:8000
 - `[Day 3/3 Ready for Review]` の PR で、記事の `published_at` が未来の日時で入っている場合だけ、gate（現在 HEAD の Codex clean 応答・未解決 review thread なし・CI green・merge 直前の HEAD 一致）を通過したら merge してよい（Claude Code / Codex 共通）。
 - `[Day 1/3]` `[Day 2/3]` の PR は merge しない。
 - merge しても公開は `published_at` の予約日時（約 3 週間先の週刊キュー）。`published_at` が無いと merge 即公開になるため merge しない。
+- Web で書いた旧記事を同期する PR（`published_at` が過去の日時）は自動で merge しない。Liatris が本文・画像・CI を確認してから merge する。merge すると Zenn 上の記事は同期したファイルの内容で上書きされる。
