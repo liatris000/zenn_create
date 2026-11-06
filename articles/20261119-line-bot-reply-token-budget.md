@@ -37,15 +37,19 @@ reply token は 1 回限りで短命。失敗は次の 2 通りで、どちら�
 1. webhook は署名検証だけして即 200 を返す。LLM 呼び出しは別スレッドへ逃がす
 2. 受信時刻を `time.monotonic()` で記録しておく
 3. 返信の直前に経過時間を見て、閾値未満なら reply、超えていたら push
-4. reply が例外で落ちたら push にフォールバックし、どの経路で返したかをログに残す
+4. reply が拒否されたら push にフォールバックする。ただし送れたか分からない失敗では push しない。どの経路で返したかはログに残す
 
 push は課金対象なので、できるだけ reply で返したい。一方、閾値を攻めすぎると送信直前に token が切れる。このトレードオフを `REPLY_THRESHOLD_SEC` の 1 つに寄せた。
 
 ## 実装
 
-外部ライブラリなしの Python 3 で書いた。署名検証（`X-Line-Signature` の HMAC-SHA256）と `webhookEventId` の重複排除は成果物リポジトリの `router.py` にある。ここでは中心になる切り替え部分だけ載せる。`client` は `reply` と `push` を持つオブジェクトで、`clock` を差し替えられるようにしてあるので、実際に待たなくてもテストできる。
+外部ライブラリなしの Python 3 で書いた。署名検証（`X-Line-Signature` の HMAC-SHA256）と `webhookEventId` の重複排除は成果物リポジトリの `router.py` にある。ここでは中心になる切り替え部分だけ載せる。`client` は `reply` と `push` を持つオブジェクトで、LINE が reply を 4xx で拒否したときは `ReplyRejected` を投げる。`clock` を差し替えられるようにしてあるので、実際に待たなくてもテストできる。
 
 ```python
+class ReplyRejected(Exception):
+    """LINE が reply を 4xx で拒否した (期限切れ・使用済みなど)。未配信が確定している。"""
+
+
 class ReplyRouter:
     """受信時刻からの経過秒が threshold_sec 未満なら reply、以上なら push。"""
 
@@ -54,7 +58,7 @@ class ReplyRouter:
         self.threshold_sec = threshold_sec
         self.clock = clock
         self.log = log
-        self.counts = {"reply": 0, "push": 0, "reply_failed_then_push": 0}
+        self.counts = {"reply": 0, "push": 0, "reply_failed_then_push": 0, "reply_unknown": 0}
 
     def respond(self, received_at: float, reply_token: str, user_id: str, text: str) -> str:
         elapsed = self.clock() - received_at
@@ -62,10 +66,13 @@ class ReplyRouter:
             try:
                 self.client.reply(reply_token, text)
                 return self._done("reply", elapsed)
-            except Exception as e:  # 期限切れ (400) 等。token は二度と使えないので push へ
-                self.log(f"reply failed after {elapsed:.1f}s: {e}")
+            except ReplyRejected as e:  # 未配信が確定。token は二度と使えないので push へ
+                self.log(f"reply rejected after {elapsed:.1f}s: {e}")
                 self.client.push(user_id, text)
                 return self._done("reply_failed_then_push", elapsed)
+            except Exception as e:  # タイムアウト・5xx 等。届いた可能性があるので push しない
+                self.log(f"reply result unknown after {elapsed:.1f}s: {e}")
+                return self._done("reply_unknown", elapsed)
         self.client.push(user_id, text)
         return self._done("push", elapsed)
 
@@ -75,7 +82,9 @@ class ReplyRouter:
         return route
 ```
 
-ハマったのは、reply が失敗したときの扱い。最初は例外をログに出して終わりにしていたが、それではユーザーに何も届かない。token は一度失敗したら二度と使えないので、再試行ではなく push に回すのが正解だった。
+ハマったのは、reply が失敗したときの扱い。最初は例外をログに出して終わりにしていたが、それではユーザーに何も届かない。token は一度失敗したら二度と使えないので、再試行ではなく push に回すことにした。
+
+ただし、どの例外でも push に回すと別の事故が起きる。LINE の[リトライに関するドキュメント](https://developers.line.biz/en/docs/messaging-api/retrying-api-request/)にあるとおり、タイムアウトや 5xx の場合はメッセージが配信済みの可能性がある。そこで push に回すのは 4xx（`400: Invalid reply token.` など、受け付けられなかったことが確定するもの）だけにした。送れたか分からない失敗は `reply_unknown` として記録し、push はしない。二重に届くより、取りこぼしを件数で見張るほうを選んだ。
 
 ## 動作確認
 
@@ -83,15 +92,16 @@ class ReplyRouter:
 
 - 受信から 5 秒後 → reply
 - 受信から 30 秒後 → push
-- reply が `400: Invalid reply token.` を投げた → push にフォールバック
+- reply が `400: Invalid reply token.` で拒否された → push にフォールバック
+- reply がタイムアウトした（届いたか不明）→ push しない
 - 同じ `webhookEventId` の 2 回目 → 無視
 - 署名が不正 → 401
 
-5 本とも通る。ただし**これは分岐ロジックの確認で、LINE 側の実際の寿命は測っていない**。閾値の既定値 20 秒は実測から出した数字ではなく、情報源の下限（30 秒前後）に余裕を持たせた仮置き。実チャネルでの計測が済むまで、記事内で寿命の秒数は断定しない。
+6 本とも通る。ただし**これは分岐ロジックの確認で、LINE 側の実際の寿命は測っていない**。閾値の既定値 20 秒は実測から出した数字ではなく、情報源の下限（30 秒前後）に余裕を持たせた仮置き。実チャネルでの計測が済むまで、記事内で寿命の秒数は断定しない。
 
 ## データアナリスト視点
 
-閾値を固定値で持つか、失敗率から決めるかは、返信経路別の件数を取れば判断できる。ログに `route=reply` / `route=push` / `route=reply_failed_then_push` を出しているので、`reply_failed_then_push` が 0 でなければ閾値が攻めすぎ、`push` ばかりなら課金が無駄、という読み方ができる。まず件数を集計してから閾値を動かす順番にしたい。
+閾値を固定値で持つか、失敗率から決めるかは、返信経路別の件数を取れば判断できる。ログに `route=reply` / `route=push` / `route=reply_failed_then_push` / `route=reply_unknown` を出しているので、`reply_failed_then_push` が 0 でなければ閾値が攻めすぎ、`push` ばかりなら課金が無駄、という読み方ができる。`reply_unknown` は届いたかどうか分からない件数なので、これが増えるなら閾値ではなく通信側を疑う。まず件数を集計してから閾値を動かす順番にしたい。
 
 ## 成果物
 
