@@ -151,7 +151,7 @@ Zenn は「人が主体となって情報を発信する場」というスタン
 ### 関連リンク
 
 - 投稿先: https://zenn.dev/liatris
-- 運用ログ（Zenn スクラップ）: （公開後に追記）
+- 運用ログ（Zenn スクラップ）: [Zenn 記事の振り返り 2026-11：記事本文](https://zenn.dev/liatris/scraps/ebcd3aa6780718)
 - Zenn 記事の管理リポジトリ: https://github.com/liatris000/zenn_create
 - Zenn コミュニティガイドライン: https://zenn.dev/guideline
 - Zenn 利用規約: https://zenn.dev/terms
