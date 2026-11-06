@@ -24,6 +24,8 @@
     "zenn-cli": "^0.5.8"
   },
   "devDependencies": {
-    "puppeteer": "^25.16.0"
+    "cheerio": "^1.2.0",
+    "puppeteer": "^25.16.0",
+    "zenn-markdown-html": "^0.5.8"
   }
 }
