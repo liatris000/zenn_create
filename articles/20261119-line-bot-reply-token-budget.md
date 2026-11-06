@@ -95,4 +95,4 @@ class ReplyRouter:
 
 ## 成果物
 
-<!-- ARTIFACT_LINKS -->
+@[github](https://github.com/liatris000/liatris-20261119-line-bot-reply-token-budget)
