@@ -223,7 +223,9 @@ grep -qE '^published_at:[[:space:]]*"[0-9]' "articles/${ARTICLE_SLUG}.md" \
 CURRENT_PATTERN=$(awk -F: '/^pattern:/ {gsub(/[" ]/, "", $2); print $2; exit}' \
   "articles/${ARTICLE_SLUG}.md")
 
-RECENT_PATTERNS=$(ls -t articles/*.md 2>/dev/null \
+# 新しい順はファイル名(YYYYMMDD-)で決める。ls -t は clone 直後に更新時刻が揃うと名前の昇順になり、
+# 一番古い記事を「直近」として比べてしまう(2026-11 に 6 回連続を見逃した原因)
+RECENT_PATTERNS=$(ls articles/*.md 2>/dev/null | sort -r \
   | grep -v "${ARTICLE_SLUG}.md" \
   | head -3 \
   | xargs -I {} awk -F: '/^pattern:/ {gsub(/[" ]/, "", $2); print $2; exit}' {})
@@ -232,15 +234,16 @@ echo "今回の pattern: ${CURRENT_PATTERN}"
 echo "直近 3 記事の pattern:"
 echo "${RECENT_PATTERNS}"
 
-# 直近 2 記事と同じパターンが連続している場合は警告 (3 回連続を検出)
+# 直近 2 記事と同じパターンが連続している場合は止める (3 回連続を検出)
 LAST_TWO_UNIQUE=$(echo "${RECENT_PATTERNS}" | head -2 | sort -u | wc -l | tr -d ' ')
 LAST_VALUE=$(echo "${RECENT_PATTERNS}" | head -1)
 if [ "${LAST_TWO_UNIQUE}" = "1" ] && [ "${CURRENT_PATTERN}" = "${LAST_VALUE}" ] && [ -n "${CURRENT_PATTERN}" ]; then
-  echo "⚠️  同じ pattern (${CURRENT_PATTERN}) が 3 回連続。構成を変えることを検討してください"
+  echo "FATAL: 同じ pattern (${CURRENT_PATTERN}) が 3 回連続。本文の構成を別パターンに組み替えてからやり直す"
+  exit 1
 fi
 ```
 
-警告が出た場合、本文構成を別パターンに組み替えることを検討する(必須ではないが、Step 8 の通知に「3 回連続 ${CURRENT_PATTERN}」と書いて Liatris の判断を仰ぐ)。
+止まった場合は、本文の構成を別パターンに組み替え、frontmatter の `pattern` を実際の構成に合わせてから Step 5.1 をやり直す。ラベルだけ変えて通さない。
 
 ### Step 6: セルフレビュー
 
@@ -256,6 +259,11 @@ fi
 - [ ] 内部リンクが切れていない
 - [ ] 冒頭メッセージブロック (`templates/article-header.md` 由来の `:::message` ブロック) が frontmatter 直後に挿入されている
 - [ ] 文字数が 1500〜3000 字の範囲(極端に短い / 長い場合は要調整)
+- [ ] 冒頭近くに全体像の図がある
+- [ ] 最後の段落が持ち帰れる一言で終わっている(成果物のリンクで終わっていない)
+- [ ] 「データアナリスト視点」の見出しや、「〜と同じ構造をしている」で終わるたとえの段落がない
+- [ ] `bash scripts/article-readability-report.sh "articles/${ARTICLE_SLUG}.md"` を実行し、文の途中の改行は 0 にした。長い文・長い段落・地の文のコード表記が多い箇所は直した
+- [ ] 成果物リポジトリの README に、前提・動かし方・期待される出力・確かめていない範囲・記事へのリンクがある(Day 2 SKILL の「成果物リポジトリの README に必ず書くこと」)
 - [ ] **定性的な順位主張に計測根拠があるか**: 「最も効いた」「一番効果があった」「劇的に改善」「圧倒的に速い」等の主張は、計測値・比較データが本文中で示されているか。示せないなら表現を弱める(「印象に残った」「個人的に効いた」等)
 
 #### 6.2 アセット存在チェック (自動)
@@ -421,8 +429,8 @@ CHECKPOINT_BODY=$(cat <<EOF
 【先行記事との違い】
 - (Day 1 PR 本文の「先行記事との違い」セクションから転記)
 
-【データアナリスト視点】
-- (記事内に入れたデータ視点・他の人があまり書かない切り口)
+【測ったこと / 持ち帰る一言】
+- (記事で測ったものと、その数字で決めたこと。最後の段落の一言)
 
 【構成パターン】
 - 今回: ${CURRENT_PATTERN}
