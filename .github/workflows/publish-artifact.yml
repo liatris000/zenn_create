@@ -145,7 +145,15 @@ jobs:
           if [ "${code}" = "201" ]; then
             echo "✅ リポジトリ作成: ${REPO_NAME}"
           elif grep -q 'name already exists' /tmp/create.json 2>/dev/null; then
-            echo "ℹ️  リポジトリは既に存在するので続行: ${REPO_NAME}"
+            # 下の push は新しい履歴で main を force-push する。中身のある既存 repo に
+            # 当たると、その履歴を上書きしてしまう。続行してよいのは、前回の公開が
+            # push 前に止まって空のまま残った repo だけ
+            if git ls-remote --exit-code --heads \
+                "https://x-access-token:${PAT}@github.com/${GH_USER}/${REPO_NAME}.git" main >/dev/null 2>&1; then
+              echo "::error::${REPO_NAME} は既に存在し、main に中身がある。上書きしないので止める(続き物なら前の repo に人が PR を出す)"
+              exit 1
+            fi
+            echo "ℹ️  リポジトリは既に存在するが空なので続行: ${REPO_NAME}"
           else
             echo "::error::リポジトリ作成に失敗しました (HTTP ${code})"
             jq -r '.message // .' /tmp/create.json 2>/dev/null || cat /tmp/create.json
