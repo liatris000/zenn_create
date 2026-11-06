@@ -111,6 +111,24 @@ Day 1 で決めた実装方針に従って、`/tmp/zenn_artifact/` で実コー�
 - HTML 系なら GitHub Pages 用にビルドできる状態に
 - スクリプト系なら実行サンプルを用意
 
+### 成果物リポジトリの README に必ず書くこと
+
+読者は記事からリポジトリに来て、README だけで動かそうとする。2026-11 の振り返りで、
+README に使い方が 1 行も無い repo、ブラウザの取得手順が抜けて動かない repo、
+期待される出力が無い repo が見つかった。README には次の 5 つを入れる。
+
+1. **前提**: ランタイムと主要ライブラリのバージョン。追加で要る手順も書く(例: Playwright なら `npx playwright install chromium`)
+2. **動かし方**: 新しく clone した状態から、上から順に貼れば通るコマンド
+3. **期待される出力**: 実際に実行した出力をそのまま貼る(抜粋でよい)
+4. **確かめていない範囲**: 実 API で動かしていない・モックだけで確かめた、などをそのまま書く
+5. **記事へのリンク**
+
+あわせて次も揃える。
+
+- テストに使う依存(pytest など)も `requirements.txt` / `package.json` に入れる
+- 実行で生成されるファイル(`work/`、`__pycache__/`、`node_modules/` など)は `.gitignore` に入れる
+- 書き終えたら、README のコマンドを別ディレクトリへの clone 相当の状態から上から順に実行し、期待される出力と一致することを確かめる
+
 ### 重要: `.claude/` 配下のファイル配置について
 
 成果物リポジトリの `.claude/mcp.json` 等、最終的に `.claude/` 配下に配置したいファイルは、`/tmp/zenn_artifact/.claude/` ではなく **`/tmp/zenn_artifact/_claude_template/`** に書くこと。
