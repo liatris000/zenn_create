@@ -38,7 +38,9 @@ jobs:
           python -m pip install -q --upgrade pip ruff
           [ -f requirements.txt ] && python -m pip install -q -r requirements.txt
           ruff check .
-          if ls tests/test_*.py test_*.py >/dev/null 2>&1; then
+          # tests/ の下でもルートでも、test_*.py が 1 つでもあればテストを流す
+          # (ls に 2 つの形を渡すと、片方が無いだけで失敗扱いになり、テストが飛ばされていた)
+          if find . -path ./node_modules -prune -o -path ./.venv -prune -o -name 'test_*.py' -print | grep -q .; then
             python -m pip install -q pytest
             python -m pytest -q
           fi
