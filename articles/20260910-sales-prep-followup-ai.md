@@ -10,16 +10,25 @@ cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/image
 ---
 
 :::message
-この記事は、Claude Codeを執筆支援に使った "毎朝1本書く" 取り組みの一環で書いています。
+この記事は、Claude Codeを執筆支援に使った "週1本書く" 取り組みの一環で書いています。
 
 - 目的: 自分のAI活用キャッチアップ。仕組み自体も毎月アップデートしていきます
-- 体制: 題材選定・実装・下書きをClaude Codeで補助、Liatrisが動作確認と編集を経て公開判断
+- 体制: 題材選定・実装・下書きをClaude Codeで補助し、動作確認と編集を経て人が公開を判断
 - 方針: Zennのガイドラインに真摯に向き合い、運営から指摘や警告があれば即座に取り組みを停止します
 
 仕組みの全貌は[こちらの設計記事](https://zenn.dev/liatris/articles/20260701-zenn-kickoff)にまとめています。
 :::
 
 商談前の準備に毎回30分〜1時間かけている、という話をよく聞く。準備の型はだいたい決まっているのに、毎回ゼロから同じ情報収集と整理をやり直している。準備だけでなく、商談後の「次に何をするか」の整理も同様に毎回ゼロから考えがちだ。この2つを1本のCLIとして実装できないか試した。
+
+
+```mermaid
+flowchart LR
+  A["商談の前<br/>会社名・URL・商談の目的"] -->|"brief"| T1["tool 定義（ブリーフィング）"]
+  T1 --> B["想定論点・質問リスト・懸念点"]
+  C["商談の後<br/>商談後のメモ"] -->|"followup"| T2["tool 定義（フォローアップ）"]
+  T2 --> D["決定事項・ネクストアクション・フォローメールの下書き"]
+```
 
 ## アーキテクチャ(ざっくり)
 
@@ -156,3 +165,5 @@ def test_generate_briefing_parses_structured_output():
 @[github](https://github.com/liatris000/liatris-20260910-sales-prep-followup-ai)
 
 デモ: https://liatris000.github.io/liatris-20260910-sales-prep-followup-ai/
+
+商談の前と後で粒度の違う項目を 1 つのスキーマに詰めると、Optional だらけの緩い形になる。モデルは分けたまま、tool 定義への変換だけを共通にすれば、Pydantic の定義と API に渡す tool 定義を二重に持たずに済む。

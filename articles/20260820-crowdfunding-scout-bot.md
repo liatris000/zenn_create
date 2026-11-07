@@ -10,14 +10,22 @@ cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/image
 ---
 
 :::message
-この記事は、Claude Codeを執筆支援に使った "毎朝1本書く" 取り組みの一環で書いています。
+この記事は、Claude Codeを執筆支援に使った "週1本書く" 取り組みの一環で書いています。
 
 - 目的: 自分のAI活用キャッチアップ。仕組み自体も毎月アップデートしていきます
-- 体制: 題材選定・実装・下書きをClaude Codeで補助、平野が動作確認と編集を経て公開判断
+- 体制: 題材選定・実装・下書きをClaude Codeで補助し、動作確認と編集を経て人が公開を判断
 - 方針: Zennのガイドラインに真摯に向き合い、運営から指摘や警告があれば即座に取り組みを停止します
 
 仕組みの全貌は[こちらの設計記事](https://zenn.dev/liatris/articles/20260701-zenn-kickoff)にまとめています。
 :::
+
+
+```mermaid
+flowchart TB
+  A["カテゴリページ"] --> B["Firecrawl の scrape_url<br/>各プロジェクトを Markdown に"]
+  B -->|"1 ページ 6000 文字まで"| C["Claude API<br/>市場適合性・差別化度・価格妥当性・トレンド整合の 4 軸で採点"]
+  C --> D["CSV<br/>総合スコアの高い順"]
+```
 
 ## クラファン製品リサーチの現実
 
