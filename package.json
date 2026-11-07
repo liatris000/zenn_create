@@ -21,11 +21,11 @@
   "author": "liatris",
   "license": "ISC",
   "dependencies": {
-    "zenn-cli": "^0.5.8"
+    "zenn-cli": "^0.5.13"
   },
   "devDependencies": {
     "cheerio": "^1.2.0",
     "puppeteer": "^25.16.0",
-    "zenn-markdown-html": "^0.5.8"
+    "zenn-markdown-html": "^0.5.13"
   }
 }
