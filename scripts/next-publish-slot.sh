@@ -8,18 +8,31 @@
 #   - articles/*.md の frontmatter `published_at` の最大日付 + 7 日 を次スロットとする
 #     (キューが毎週木 07:00 なので +7 日で木曜のまま末尾に積み上がる)
 #   - 既存の published_at が 1 件も無い場合は、今日以降の次の木曜 07:00 にフォールバック
+#   - --asap: 速報・初見の記事用。週次のキューの末尾ではなく、今日から 3 日後以降で、
+#     既存の published_at と同じ日にならない最初の日の 07:00 を返す。月曜の Day 1 で予約すると
+#     水曜の Day 3 より後になる。既存の予約はずらさず、空いている日に差し込む
+#     (公開前の予約日時を変えたときの Zenn の扱いは確かめていない。docs/cycle-overview.md の「速報の枠」)
 #
 # 出力 (eval して使う想定):
 #   SLUG_DATE=YYYYMMDD
 #   PUBLISHED_AT="YYYY-MM-DD 07:00"
 #
 # 使用例 (day1-kickoff):
-#   eval "$(./scripts/next-publish-slot.sh)"
+#   eval "$(./scripts/next-publish-slot.sh)"           # 週次のキュー
+#   eval "$(./scripts/next-publish-slot.sh --asap)"    # 速報・初見
 #   export ARTICLE_SLUG="${SLUG_DATE}-${THEME_SLUG}"
 #
 set -euo pipefail
 
 PUBLISH_TIME="07:00"
+ASAP_MIN_DAYS=3
+
+MODE="queue"
+case "${1:-}" in
+  "") ;;
+  --asap) MODE="asap" ;;
+  *) echo "usage: $0 [--asap]" >&2; exit 1 ;;
+esac
 PUBLISH_DOW=4   # 木曜 (date +%u: 1=月 ... 7=日)
 
 # $1=YYYY-MM-DD, $2=加算日数 -> YYYY-MM-DD (Linux / macOS 両対応)
@@ -40,7 +53,15 @@ MAX_DATE=$(grep -rhoE 'published_at:[[:space:]]*"[0-9]{4}-[0-9]{2}-[0-9]{2}' art
   | sort \
   | tail -1)
 
-if [ -n "${MAX_DATE}" ]; then
+if [ "${MODE}" = "asap" ]; then
+  # 既存の予約日の一覧(重複なし)。この日を避ける
+  TAKEN=$(grep -rhoE 'published_at:[[:space:]]*"[0-9]{4}-[0-9]{2}-[0-9]{2}' articles/*.md 2>/dev/null \
+    | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' | sort -u)
+  NEXT_DATE=$(add_days "$(date +%Y-%m-%d)" "${ASAP_MIN_DAYS}")
+  while printf '%s\n' "${TAKEN}" | grep -qx "${NEXT_DATE}"; do
+    NEXT_DATE=$(add_days "${NEXT_DATE}" 1)
+  done
+elif [ -n "${MAX_DATE}" ]; then
   NEXT_DATE=$(add_days "${MAX_DATE}" 7)
 else
   # 予約が 1 件も無い → 今日以降の次の木曜
