@@ -6,12 +6,12 @@
 # が繰り返し見つかったが、どれも既存のチェックで拾えていなかった。
 #
 # 数え方は scripts/lib/readability-report.mjs。Zenn と同じ変換(zenn-markdown-html)で HTML にしてから数える。
-# 事前に npm ci が必要(Routine 環境では Setup script で入る)。
+# 依存が無ければ npm ci を 1 回実行してから数える。
 #
 # 使い方:
 #   bash scripts/article-readability-report.sh articles/xxx.md [articles/yyy.md ...]
 #
-# 終了コード: 数えられたら 0。ファイルが無い・依存が入っていないときは 1
+# 終了コード: 数えられたら 0。ファイルが無い・依存を入れられなかったときは 1
 
 set -euo pipefail
 
@@ -25,8 +25,15 @@ for f in "$@"; do
 done
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# 定期実行の環境は Setup script で作った node_modules をキャッシュしている。依存を足したあと
+# キャッシュが作り直されていないと、新しい依存が入っていない。そのときはロックファイルどおりに
+# 1 回だけ入れ直す。puppeteer の Chromium は別の場所にキャッシュ済みなので、ダウンロードはしない
+if [[ ! -d "${ROOT}/node_modules/zenn-markdown-html" || ! -d "${ROOT}/node_modules/cheerio" ]]; then
+  echo "見やすさの集計に要る依存が入っていないので npm ci を実行する" >&2
+  (cd "${ROOT}" && PUPPETEER_SKIP_DOWNLOAD=1 npm ci --no-audit --no-fund >&2)
+fi
 if [[ ! -d "${ROOT}/node_modules/zenn-markdown-html" ]]; then
-  echo "zenn-markdown-html が入っていない。先に npm ci を実行する" >&2
+  echo "zenn-markdown-html を入れられなかった" >&2
   exit 1
 fi
 
