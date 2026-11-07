@@ -432,6 +432,11 @@ git push origin "${LATEST_BRANCH}"
 WORD_COUNT=$(wc -m < "articles/${ARTICLE_SLUG}.md" | tr -d ' ')
 export WORD_COUNT
 
+# 予約日時を frontmatter から読む。Day 1 で export した値はこのセッションに引き継がれない。
+# 速報の通知(【速報】)に締め切りとして入れるので、本文を組み立てる前に読む
+PUBLISHED_AT=$(awk -F'"' '/^published_at:/ {print $2; exit}' "articles/${ARTICLE_SLUG}.md")
+export PUBLISHED_AT
+
 CHECKPOINT_BODY=$(cat <<EOF
 [Day 3 完了] ${ARTICLE_TITLE}
 
@@ -480,10 +485,7 @@ Day 3 では **`--body` モードを優先**する(チェックポイント本�
 
 ### Step 10: 完了報告
 
-```bash
-# 予約スロットを frontmatter から読み出して報告に含める
-PUBLISHED_AT=$(awk -F'"' '/^published_at:/ {print $2; exit}' "articles/${ARTICLE_SLUG}.md")
-```
+予約スロット(`PUBLISHED_AT`)は Step 8 で frontmatter から読み出し済み。
 
 ```
 Day 3 完了 (PR: ${PR_URL}, 文字数: ${WORD_COUNT}字, 予約公開: ${PUBLISHED_AT})

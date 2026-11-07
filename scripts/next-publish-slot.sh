@@ -5,7 +5,7 @@
 # 週刊連載キューの「次の空きスロット」を算出する。
 #
 # 方針:
-#   - articles/*.md の frontmatter `published_at` の最大日付 + 7 日 を次スロットとする
+#   - articles/*.md の frontmatter `published_at` のうち、木曜の最大日付 + 7 日 を次スロットとする
 #     (キューが毎週木 07:00 なので +7 日で木曜のまま末尾に積み上がる)
 #   - 既存の published_at が 1 件も無い場合は、今日以降の次の木曜 07:00 にフォールバック
 #   - --asap: 速報・初見の記事用。週次のキューの末尾ではなく、今日から 3 日後以降で、
@@ -47,11 +47,14 @@ dow_of() {
     || date -j -f "%Y-%m-%d" "$1" +%u
 }
 
-# 既存 published_at の最大日付 (YYYY-MM-DD)。文字列ソートで OK (固定桁フォーマット)
-MAX_DATE=$(grep -rhoE 'published_at:[[:space:]]*"[0-9]{4}-[0-9]{2}-[0-9]{2}' articles/*.md 2>/dev/null \
-  | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' \
-  | sort \
-  | tail -1)
+# 週次のキューの基準 = 木曜の published_at のうち最も遅い日 (YYYY-MM-DD)。
+# 速報の枠(--asap)は木曜以外の日に入ることがある。それを基準にすると、以後の週次の予約が
+# その曜日にずれるので、木曜の予約だけを見る。文字列ソートで OK (固定桁フォーマット)
+MAX_DATE=""
+for d in $(grep -rhoE 'published_at:[[:space:]]*"[0-9]{4}-[0-9]{2}-[0-9]{2}' articles/*.md 2>/dev/null \
+  | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' | sort -u); do
+  [ "$(dow_of "${d}")" -eq "${PUBLISH_DOW}" ] && MAX_DATE="${d}"
+done
 
 if [ "${MODE}" = "asap" ]; then
   # 既存の予約日の一覧(重複なし)。この日を避ける
