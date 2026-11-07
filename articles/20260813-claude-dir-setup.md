@@ -10,14 +10,23 @@ cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/image
 ---
 
 :::message
-この記事は、Claude Codeを執筆支援に使った "毎朝1本書く" 取り組みの一環で書いています。
+この記事は、Claude Codeを執筆支援に使った "週1本書く" 取り組みの一環で書いています。
 
 - 目的: 自分のAI活用キャッチアップ。仕組み自体も毎月アップデートしていきます
-- 体制: 題材選定・実装・下書きをClaude Codeで補助、平野が動作確認と編集を経て公開判断
+- 体制: 題材選定・実装・下書きをClaude Codeで補助し、動作確認と編集を経て人が公開を判断
 - 方針: Zennのガイドラインに真摯に向き合い、運営から指摘や警告があれば即座に取り組みを停止します
 
 仕組みの全貌は[こちらの設計記事](https://zenn.dev/liatris/articles/20260701-zenn-kickoff)にまとめています。
 :::
+
+
+```mermaid
+flowchart TB
+  G["~/.claude/settings.json<br/>全プロジェクト共通の設定"] -->|"プロジェクト側で上書き"| P[".claude/（プロジェクトの設定）"]
+  P --> C["CLAUDE.md<br/>常に有効な制約・構造・コマンド"]
+  P --> S["settings.json<br/>やってよい操作・いけない操作、hooks"]
+  P --> K["skills/<br/>呼び出したときだけ要る手順"]
+```
 
 ## セッションのたびに「このプロジェクトのルールは〜」と説明していた
 

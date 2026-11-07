@@ -10,10 +10,10 @@ cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/image
 ---
 
 :::message
-この記事は、Claude Codeを執筆支援に使った "毎朝1本書く" 取り組みの一環で書いています。
+この記事は、Claude Codeを執筆支援に使った "週1本書く" 取り組みの一環で書いています。
 
 - 目的: 自分のAI活用キャッチアップ。仕組み自体も毎月アップデートしていきます
-- 体制: 題材選定・実装・下書きをClaude Codeで補助、平野が動作確認と編集を経て公開判断
+- 体制: 題材選定・実装・下書きをClaude Codeで補助し、動作確認と編集を経て人が公開を判断
 - 方針: Zennのガイドラインに真摯に向き合い、運営から指摘や警告があれば即座に取り組みを停止します
 
 仕組みの全貌は[こちらの設計記事](https://zenn.dev/liatris/articles/20260701-zenn-kickoff)にまとめています。
@@ -124,3 +124,5 @@ source of truth と公開面の突き合わせは、データ基盤における�
 ## 成果物
 
 @[github](https://github.com/liatris000/liatris-20261001-content-drift-check)
+
+単純な差分では、表記ゆれの中に本当に見るべき価格の違いや機能の欠落が埋もれる。意味として食い違う項目だけを報告させれば、ずれに気づく手段を「誰かがたまたま見つける」以外に持てる。ただし、今回は実際の API では動かしておらず、検知の精度は確かめていない。
