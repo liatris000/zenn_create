@@ -135,10 +135,16 @@ gh pr close "${PREV_NUMBER}" --delete-branch
 export THEME_SLUG="..."
 export ARTICLE_TITLE="..."
 export ARTICLE_TOPIC="..."
+export ARTICLE_PURPOSE="..."   # 速報・初見 / 実測・運用 / 設計判断
 
 # 週刊連載キューの次の空きスロット(既存 published_at の最大 + 7日, 木 07:00)を予約。
+# 記事の目的が速報・初見なら --asap で、3 日後以降の空いている日に予約する(topic-selection skill)。
 # slug の日付は「作成日」ではなく「公開予定日」に揃える。
-eval "$(./scripts/next-publish-slot.sh)"   # SLUG_DATE, PUBLISHED_AT をセット
+if [ "${ARTICLE_PURPOSE:-}" = "速報・初見" ]; then
+  eval "$(./scripts/next-publish-slot.sh --asap)"   # SLUG_DATE, PUBLISHED_AT をセット
+else
+  eval "$(./scripts/next-publish-slot.sh)"          # SLUG_DATE, PUBLISHED_AT をセット
+fi
 export ARTICLE_SLUG="${SLUG_DATE}-${THEME_SLUG}"
 export PUBLISHED_AT
 export REPO_NAME="liatris-${ARTICLE_SLUG}"
