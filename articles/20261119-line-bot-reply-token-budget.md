@@ -10,10 +10,10 @@ cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/image
 ---
 
 :::message
-この記事は、Claude Codeを執筆支援に使った "毎朝1本書く" 取り組みの一環で書いています。
+この記事は、Claude Codeを執筆支援に使った "週1本書く" 取り組みの一環で書いています。
 
 - 目的: 自分のAI活用キャッチアップ。仕組み自体も毎月アップデートしていきます
-- 体制: 題材選定・実装・下書きをClaude Codeで補助、平野が動作確認と編集を経て公開判断
+- 体制: 題材選定・実装・下書きをClaude Codeで補助し、動作確認と編集を経て人が公開を判断
 - 方針: Zennのガイドラインに真摯に向き合い、運営から指摘や警告があれば即座に取り組みを停止します
 
 仕組みの全貌は[こちらの設計記事](https://zenn.dev/liatris/articles/20260701-zenn-kickoff)にまとめています。
@@ -22,6 +22,20 @@ cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/image
 LLM を挟んだ LINE ボットは、応答が遅れた回だけ `400: Invalid reply token.` で返信が落ちる。原因は reply token の寿命に間に合わないことで、LLM の応答時間が伸びるほど起きやすくなる。
 
 寿命は公式ドキュメントでは明確な秒数が見つけにくく、情報源によって 30 秒前後とも約 60 秒とも書かれている。そこで秒数を決め打ちせず、受信からの経過時間を測って reply と push を切り替える作りにした。
+
+```mermaid
+flowchart TD
+  W["webhook を受信"] --> S{"署名は正しいか<br/>同じ webhookEventId は初めてか"}
+  S -->|"いいえ"| X["401 / 無視"]
+  S -->|"はい"| OK["すぐ 200 を返し、LLM は別スレッドで呼ぶ"]
+  OK --> E{"受信からの経過時間は<br/>閾値未満か"}
+  E -->|"超えた"| P["push で返す"]
+  E -->|"未満"| R["reply で返す"]
+  R --> F{"reply の結果"}
+  F -->|"成功"| D["完了"]
+  F -->|"4xx で拒否（届いていないと確定）"| P
+  F -->|"タイムアウト・5xx（届いたか不明）"| U["push しない<br/>reply_unknown として記録"]
+```
 
 ## 失敗パターンは2つあって、文言が同じ
 
@@ -43,7 +57,11 @@ push は課金対象なので、できるだけ reply で返したい。一方�
 
 ## 実装
 
-外部ライブラリなしの Python 3 で書いた。署名検証（`X-Line-Signature` の HMAC-SHA256）と `webhookEventId` の重複排除は成果物リポジトリの `router.py` にある。ここでは中心になる切り替え部分だけ載せる。`client` は `reply` と `push` を持つオブジェクトで、LINE が reply を 4xx で拒否したときは `ReplyRejected` を投げる。`clock` を差し替えられるようにしてあるので、実際に待たなくてもテストできる。
+外部ライブラリなしの Python 3 で書いた。ここでは中心になる切り替え部分だけ載せる。前提は次のとおり。
+
+- 署名検証（`X-Line-Signature` の HMAC-SHA256）と `webhookEventId` の重複排除は、成果物リポジトリの `router.py` にある
+- `client` は `reply` と `push` を持つオブジェクトで、LINE が reply を 4xx で拒否したときは `ReplyRejected` を投げる
+- `clock` を差し替えられるので、実際に待たなくてもテストできる
 
 ```python
 class ReplyRejected(Exception):
@@ -99,10 +117,21 @@ class ReplyRouter:
 
 6 本とも通る。ただし**これは分岐ロジックの確認で、LINE 側の実際の寿命は測っていない**。閾値の既定値 20 秒は実測から出した数字ではなく、情報源の下限（30 秒前後）に余裕を持たせた仮置き。実チャネルでの計測が済むまで、記事内で寿命の秒数は断定しない。
 
-## データアナリスト視点
+## 閾値をどう決めるか
 
-閾値を固定値で持つか、失敗率から決めるかは、返信経路別の件数を取れば判断できる。ログに `route=reply` / `route=push` / `route=reply_failed_then_push` / `route=reply_unknown` を出しているので、`reply_failed_then_push` が 0 でなければ閾値が攻めすぎ、`push` ばかりなら課金が無駄、という読み方ができる。`reply_unknown` は届いたかどうか分からない件数なので、これが増えるなら閾値ではなく通信側を疑う。まず件数を集計してから閾値を動かす順番にしたい。
+閾値を固定値で持つか、失敗率から決めるかは、返信経路別の件数を取れば判断できる。ログには経路を 4 種類出している。
 
-## 成果物
+| ログの経路 | 意味 | 件数が多いときの読み方 |
+|---|---|---|
+| `route=reply` | 期限内に reply で返せた | — |
+| `route=push` | 閾値を超えたので push で返した | push ばかりなら課金が無駄 |
+| `route=reply_failed_then_push` | reply が拒否され、push に回した | 0 でなければ閾値が攻めすぎ |
+| `route=reply_unknown` | reply が届いたか分からない | 閾値ではなく通信側を疑う |
+
+まず件数を集計してから閾値を動かす順番にしたい。
+
+コードは次のリポジトリにある。
 
 @[github](https://github.com/liatris000/liatris-20261119-line-bot-reply-token-budget)
+
+reply token の寿命の秒数が分からないままでも、返し方は決められる。秒数を決め打ちせず経過時間で reply と push を切り替え、push に回すのは拒否が確定した 4xx だけにする。届いたか分からない失敗は push せず、件数で見張る。
