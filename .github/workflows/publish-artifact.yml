@@ -160,6 +160,28 @@ jobs:
             exit 1
           fi
 
+          # --- 雛形を当てる（templates/artifact） ---
+          # 成果物に同じ名前のファイルが無いときだけ雛形をコピーする。成果物側にあればそちらを使う。
+          # CI のワークフローは、push に workflow 権限が要るので、ここでは入れず下の別コミットで足す
+          for f in LICENSE .gitignore ruff.toml README.md; do
+            if [ ! -e "_artifact/${f}" ]; then
+              cp "templates/artifact/${f}" "_artifact/${f}"
+              echo "📄 雛形から追加: ${f}"
+            fi
+          done
+          ARTICLE_URL="https://zenn.dev/liatris/articles/${REPO_NAME#liatris-}" \
+          YEAR="$(date +%Y)" ARTICLE_TITLE="${ARTICLE_TITLE}" python3 - <<'PY'
+          import os, pathlib
+          for name in ("LICENSE", "README.md"):
+              p = pathlib.Path("_artifact") / name
+              if not p.exists():
+                  continue
+              t = p.read_text(encoding="utf-8")
+              for k in ("YEAR", "ARTICLE_TITLE", "ARTICLE_URL"):
+                  t = t.replace("{{" + k + "}}", os.environ[k])
+              p.write_text(t, encoding="utf-8")
+          PY
+
           # --- 成果物を push（履歴は作らず初回コミットのみ） ---
           # 公開されるリポジトリの中身は _artifact/ の直下。zenn_create 側の
           # ファイル（articles/ や .github/ 等）は一切持ち込まない
@@ -177,6 +199,22 @@ jobs:
           git push -q -f "https://x-access-token:${PAT}@github.com/${GH_USER}/${REPO_NAME}.git" main
           echo "✅ push 完了: $(git ls-files | wc -l) ファイル"
           echo "file_count=$(git ls-files | wc -l)" >> "$GITHUB_OUTPUT"
+
+          # --- CI のワークフローを別コミットで足す（失敗しても公開は止めない） ---
+          # .github/workflows/ を push するには、PAT に workflow 権限が要る。権限が無くても
+          # 成果物の公開そのものは済んでいるので、警告だけ出して先へ進む
+          if [ ! -e .github/workflows/ci.yml ]; then
+            mkdir -p .github/workflows
+            cp ../templates/artifact/github/workflows/ci.yml .github/workflows/ci.yml
+            git -c user.email=noreply@anthropic.com -c user.name=Claude add .github/workflows/ci.yml
+            git -c user.email=noreply@anthropic.com -c user.name=Claude \
+              commit -q -m "CI を追加する（zenn_create の雛形）"
+            if git push -q "https://x-access-token:${PAT}@github.com/${GH_USER}/${REPO_NAME}.git" main 2>/dev/null; then
+              echo "✅ CI を追加"
+            else
+              echo "::warning::CI のワークフローを push できなかった（PAT の workflow 権限を確かめる）。成果物は公開済み"
+            fi
+          fi
 
       - name: GitHub Pages を有効化する
         if: ${{ steps.meta.outputs.enable_pages == 'true' }}
