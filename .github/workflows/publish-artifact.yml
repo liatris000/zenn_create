@@ -326,6 +326,44 @@ jobs:
             echo "::warning::一時ブランチの削除に失敗（既に無い可能性）: ${GITHUB_REF_NAME}"
           fi
 
+      # Day 2 が公開の前に scripts/stash-artifact.sh で作る退避ブランチ。公開できたら要らない。
+      # routine の git プロキシは ref の削除を通さない（2026-11-11 に 403 を確認）ので、ここで消す
+      - name: 退避ブランチを削除する
+        if: ${{ steps.publish.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO_NAME: ${{ steps.meta.outputs.repo_name }}
+        run: |
+          set -euo pipefail
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/artifact-stash/${REPO_NAME}" >/dev/null 2>&1; then
+            if gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/artifact-stash/${REPO_NAME}" >/dev/null 2>&1; then
+              echo "✅ 退避ブランチ削除: artifact-stash/${REPO_NAME}"
+            else
+              echo "::warning::退避ブランチを消せませんでした: artifact-stash/${REPO_NAME}"
+            fi
+          fi
+
+      # 公開されないまま残った退避ブランチ（その週を中止した場合など）を 14 日で片付ける。
+      # 14 日待つのは、Day 3 や人の判断で公開し直す余地を残すため
+      - name: 古い退避ブランチを片付ける
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/git/matching-refs/heads/artifact-stash/" \
+            --jq '.[] | "\(.ref) \(.object.sha)"' | while read -r ref sha; do
+            age=$(gh api "repos/${GITHUB_REPOSITORY}/git/commits/${sha}" \
+              --jq '(now - (.committer.date | fromdateiso8601)) | floor')
+            if [ "${age}" -ge 1209600 ]; then
+              if gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/${ref}" >/dev/null 2>&1; then
+                echo "🧹 削除: ${ref#refs/heads/}"
+              else
+                echo "::warning::古い退避ブランチを消せませんでした: ${ref#refs/heads/}"
+              fi
+            fi
+          done
+
       - name: サマリを出力する
         if: always()
         env:

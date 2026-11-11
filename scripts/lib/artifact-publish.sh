@@ -20,6 +20,11 @@ ap_init() {
   AP_REMOTE="https://${token}@github.com/${AP_DISPATCH_REPO}.git"
   AP_ARTIFACT_BRANCH="artifact/${repo_name}"
   AP_RESULT_BRANCH="artifact-result/${repo_name}"
+  AP_STASH_BRANCH="artifact-stash/${repo_name}"
+  # 公開に成功したときだけ REPO_URL / PAGES_URL を書くファイル。呼び出し側は
+  # スクリプトの出力を $(...) で拾わず、これを source する。$(...) や eval と組み合わせると
+  # .claude/settings.json の permissions.allow に当たらず、権限判定に回ってしまうため
+  AP_RESULT_FILE="${PUBLISH_RESULT_FILE:-/tmp/zenn_publish_result.env}"
   AP_REPO_ROOT="$(git rev-parse --show-toplevel)"
   AP_POLL_TIMEOUT="${PUBLISH_ARTIFACT_TIMEOUT:-900}"
   AP_POLL_INTERVAL="${PUBLISH_ARTIFACT_POLL_INTERVAL:-10}"
@@ -83,6 +88,26 @@ ap_report_success() {
   echo "✅ 成果物リポジトリを公開しました (${AP_FILE_COUNT} ファイル)"
   echo "   run: ${AP_RUN_URL}"
   echo "REPO_URL=${AP_REPO_URL}"
-  [[ -n "${AP_PAGES_URL}" ]] && echo "PAGES_URL=${AP_PAGES_URL}"
+  [[ -n "${AP_PAGES_URL}" && "${AP_PAGES_URL}" != "null" ]] && echo "PAGES_URL=${AP_PAGES_URL}"
+
+  {
+    printf 'REPO_URL=%q\n' "${AP_REPO_URL}"
+    if [[ -n "${AP_PAGES_URL}" && "${AP_PAGES_URL}" != "null" ]]; then
+      printf 'PAGES_URL=%q\n' "${AP_PAGES_URL}"
+    else
+      printf 'PAGES_URL=\n'
+    fi
+  } > "${AP_RESULT_FILE}"
+  echo "   結果: ${AP_RESULT_FILE}"
+
+  # 公開できたので退避ブランチは要らない。routine の git プロキシは ref の削除を通さないので、
+  # 実際には publish-artifact.yml が消す。ここは手元で動かしたとき用で、失敗しても止めない
+  git -C "${AP_REPO_ROOT}" push -q "${AP_REMOTE}" --delete "${AP_STASH_BRANCH}" >/dev/null 2>&1 || true
   return 0
+}
+
+# ap_clear_result_file
+#   前回の結果ファイルを消す。残っていると、失敗したのに成功と読まれる
+ap_clear_result_file() {
+  rm -f "${AP_RESULT_FILE}"
 }

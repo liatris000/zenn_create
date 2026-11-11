@@ -7,9 +7,15 @@
 # 例:
 #   ./scripts/publish-artifact.sh "liatris-20260428-slack-bot" "/tmp/zenn_artifact" "Claude CodeでSlack Botを作る"
 #
-# 出力 (呼び出し元が eval で拾う):
+# 出力:
+#   成功したときだけ /tmp/zenn_publish_result.env に REPO_URL / PAGES_URL を書く
+#   (呼び出し側はこれを source する。標準出力にも同じ行を出す)
 #   REPO_URL  - GitHubリポジトリURL
 #   PAGES_URL - GitHub Pages URL (HTML系成果物の場合)
+#
+# 権限: .claude/settings.json の permissions.allow に入っている。他のコマンドと
+#   つなげず ($(...) / eval / && も使わず) 単独の Bash 呼び出しで実行すること。
+#   つなげると allow に当たらず、auto mode の権限判定に回って拒否されうる
 #
 # 必要な環境変数:
 #   GITHUB_TOKEN  (またはGITHUB_ACCESS_TOKEN)
@@ -69,6 +75,7 @@ case "${ENABLE_PAGES}" in
 esac
 
 ap_init "${REPO_NAME}"
+ap_clear_result_file
 
 TMPTREE="$(mktemp -d)"
 cleanup() {

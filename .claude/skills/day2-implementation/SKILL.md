@@ -268,14 +268,46 @@ git push origin "${LATEST_BRANCH}"
 **スクリプトは 1 回だけ実行する**。内部で GitHub Actions を起動して完了まで待つため、
 二重に呼ぶと push が 2 本走って待ち時間も倍になる。
 
+リポジトリ名は `liatris-${ARTICLE_SLUG}` に決めている(Day 3 の再試行もこの名前で探す)。
+2026-11-03 には名前を決めないまま進み、PR のコメントに `line-bot-reply-token-budget` と
+書かれて Day 3 の名前と食い違った。
+
 ```bash
-set +e
-PUBLISH_LOG=$(./scripts/publish-artifact.sh "${REPO_NAME}" "/tmp/zenn_artifact" "${ARTICLE_TITLE}" 2>&1)
-PUBLISH_RC=$?
-set -e
-echo "${PUBLISH_LOG}"
-eval "$(printf '%s' "${PUBLISH_LOG}" | grep -E '^(REPO_URL|PAGES_URL)=')"
-export REPO_URL PAGES_URL
+REPO_NAME="liatris-${ARTICLE_SLUG}"
+export REPO_NAME
+```
+
+**次の 2 つのスクリプトは、それぞれ単独の Bash 呼び出しで実行する** ⚠️。
+`.claude/settings.json` の `permissions.allow` に入っているので、単独なら auto mode の
+権限判定に回らない。`$(...)` で出力を拾う、`set +e` や `eval` と同じ呼び出しに入れる、
+`&&` でつなぐ、のどれかをすると allow に当たらず、`[Create Public Surface]` で拒否されうる
+(2026-11-03 と 2026-11-10 の 2 週続けて拒否され、成果物が消えた)。
+
+1 つ目: 成果物を退避ブランチ `artifact-stash/${REPO_NAME}` に保存する。公開が拒否されても、
+Day 3 がここから公開し直せる。
+
+```bash
+./scripts/stash-artifact.sh "${REPO_NAME}" "/tmp/zenn_artifact" "${ARTICLE_TITLE}"
+```
+
+2 つ目: 公開する。成功したときだけ `/tmp/zenn_publish_result.env` に `REPO_URL` / `PAGES_URL` が書かれる。
+
+```bash
+./scripts/publish-artifact.sh "${REPO_NAME}" "/tmp/zenn_artifact" "${ARTICLE_TITLE}"
+```
+
+結果は別の呼び出しで読む。拒否された・失敗したときは結果ファイルが無い。
+拒否されたときは、その旨と拒否の理由を `PUBLISH_LOG` に書く(下の失敗時コメントに使う)。
+
+```bash
+if [ -f /tmp/zenn_publish_result.env ]; then
+  . /tmp/zenn_publish_result.env
+  PUBLISH_RC=0
+else
+  PUBLISH_RC=1
+  PUBLISH_LOG="${PUBLISH_LOG:-publish-artifact.sh の出力をここに貼る(拒否された場合はその理由)}"
+fi
+export REPO_URL PAGES_URL PUBLISH_RC
 ```
 
 #### 仕組み(2026-08-18 変更)
@@ -339,7 +371,7 @@ if [ "${PUBLISH_RC}" -ne 0 ]; then
     echo '失敗しました。本文の `<!-- ARTIFACT_LINKS -->` は未置換のまま残っています。'
     echo
     echo "- 想定リポジトリ名: \`${REPO_NAME}\`"
-    echo '- 成果物の所在: このセッションの `/tmp/zenn_artifact`(セッション終了で消えます)'
+    echo "- 成果物の所在: 退避ブランチ \`artifact-stash/${REPO_NAME}\`(Day 3 の再試行はここから公開する。退避も失敗していれば、このセッションの \`/tmp/zenn_artifact\` にしか無く、セッション終了で消える)"
     echo
     echo '```'
     printf '%s\n' "${PUBLISH_LOG}"

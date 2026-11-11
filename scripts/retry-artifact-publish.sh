@@ -4,8 +4,9 @@
 # 使い方:
 #   ./scripts/retry-artifact-publish.sh <リポジトリ名>
 #
-# 出力 (呼び出し元が eval で拾う):
-#   REPO_URL / PAGES_URL
+# 出力:
+#   成功したときだけ /tmp/zenn_publish_result.env に REPO_URL / PAGES_URL を書く (呼び出し側が source する)
+#   publish-artifact.sh と同じく、単独の Bash 呼び出しで実行すること
 #
 # ─── 何のためのスクリプトか ──────────────────────────────────────
 # Day 2 は「記事本文を書く」→「成果物リポジトリを公開する」の順で動く(2026-08-18 に
@@ -30,9 +31,23 @@ fi
 source "$(dirname "${BASH_SOURCE[0]}")/lib/artifact-publish.sh"
 
 ap_init "${REPO_NAME}"
+ap_clear_result_file
 
 if ! git ls-remote --exit-code --heads "${AP_REMOTE}" "${AP_ARTIFACT_BRANCH}" >/dev/null 2>&1; then
-  echo "❌ 一時ブランチが残っていないため再試行できません: ${AP_ARTIFACT_BRANCH}" >&2
+  # 公開スクリプトが起動前に拒否されると一時ブランチは作られない。
+  # Day 2 が公開の前に stash-artifact.sh で退避していれば、そこから公開し直す
+  if git ls-remote --exit-code --heads "${AP_REMOTE}" "${AP_STASH_BRANCH}" >/dev/null 2>&1; then
+    echo "🔁 一時ブランチが無いので、退避ブランチから公開し直します: ${AP_STASH_BRANCH}"
+    RESTORE="$(mktemp -d)"
+    trap 'rm -rf "${RESTORE}"' EXIT
+    git -C "${AP_REPO_ROOT}" fetch -q "${AP_REMOTE}" "${AP_STASH_BRANCH}"
+    git -C "${AP_REPO_ROOT}" archive FETCH_HEAD | tar -x -C "${RESTORE}"
+    TITLE="$(jq -r '.article_title' "${RESTORE}/.artifact-stash.json")"
+    PAGES="$(jq -r '.enable_pages' "${RESTORE}/.artifact-stash.json")"
+    "$(dirname "${BASH_SOURCE[0]}")/publish-artifact.sh" "${REPO_NAME}" "${RESTORE}/_artifact" "${TITLE}" "${PAGES}"
+    exit $?
+  fi
+  echo "❌ 一時ブランチも退避ブランチも残っていないため再試行できません: ${AP_ARTIFACT_BRANCH} / ${AP_STASH_BRANCH}" >&2
   echo "   成果物が失われています。Day 2 の実装からやり直すか、Liatris の判断を仰いでください" >&2
   exit 1
 fi

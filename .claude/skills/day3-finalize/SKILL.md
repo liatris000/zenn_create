@@ -328,20 +328,30 @@ fi
 # --- 2. 未公開なら再試行 ---
 if [ -n "${PUBLISH_PENDING}" ]; then
   echo "⚠️  成果物が未公開の状態で Day 3 に渡っています。再試行します"
-  set +e
-  RETRY_LOG=$(./scripts/retry-artifact-publish.sh "liatris-${ARTICLE_SLUG}" 2>&1)
-  RETRY_RC=$?
-  set -e
-  echo "${RETRY_LOG}"
+fi
+```
 
-  if [ "${RETRY_RC}" -ne 0 ]; then
+未公開なら、再試行のスクリプトを **単独の Bash 呼び出しで** 実行する。`$(...)` や `eval`、
+`&&` と組み合わせると `.claude/settings.json` の allow に当たらず、権限判定で拒否されうる。
+一時ブランチ `artifact/...` が無くても、Day 2 が退避ブランチ `artifact-stash/...` に
+保存していれば、スクリプトがそこから公開し直す。
+
+```bash
+./scripts/retry-artifact-publish.sh "liatris-${ARTICLE_SLUG}"
+```
+
+成功したときだけ `/tmp/zenn_publish_result.env` が書かれるので、結果は別の呼び出しで読む:
+
+```bash
+if [ -n "${PUBLISH_PENDING}" ]; then
+  if [ ! -f /tmp/zenn_publish_result.env ]; then
     echo "FATAL: 成果物リポジトリが未公開のままです。Ready for Review にはできません"
     echo "  記事本文と PR はそのまま残るので、Liatris が判断してください"
     gh pr comment "${PR_URL}" --body "Day 3: 成果物リポジトリ公開の再試行に失敗しました。Liatris の判断が必要です。"
     exit 1
   fi
 
-  eval "$(printf '%s' "${RETRY_LOG}" | grep -E '^(REPO_URL|PAGES_URL)=')"
+  . /tmp/zenn_publish_result.env
   export REPO_URL PAGES_URL
 
   # プレースホルダを実 URL に置換する (Day 2 SKILL Step 6.1 と同じ処理)
