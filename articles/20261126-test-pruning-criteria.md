@@ -6,6 +6,7 @@ topics: ["testing", "mutationtesting", "python", "pytest", "claudecode"]
 pattern: "comparison"
 published: false
 published_at: "2026-11-26 07:00"
+cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20261126-test-pruning-criteria_thumbnail.png
 ---
 
 :::message
