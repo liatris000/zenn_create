@@ -225,7 +225,9 @@ CURRENT_PATTERN=$(awk -F: '/^pattern:/ {gsub(/[" ]/, "", $2); print $2; exit}' \
 
 # 新しい順はファイル名(YYYYMMDD-)で決める。ls -t は clone 直後に更新時刻が揃うと名前の昇順になり、
 # 一番古い記事を「直近」として比べてしまう(2026-11 に 6 回連続を見逃した原因)
-RECENT_PATTERNS=$(ls articles/*.md 2>/dev/null | sort -r \
+# 対象は日付で始まる slug だけ。Web エディタ由来の旧記事 (ランダム 14 文字) は pattern を持たず、
+# 名前の降順で先頭に来るため、混ぜると直近 3 件が空になって判定が素通りする(2026-11-11 に発見)
+RECENT_PATTERNS=$(ls articles/20[0-9][0-9][0-9][0-9][0-9][0-9]-*.md 2>/dev/null | sort -r \
   | grep -v "${ARTICLE_SLUG}.md" \
   | head -3 \
   | xargs -I {} awk -F: '/^pattern:/ {gsub(/[" ]/, "", $2); print $2; exit}' {})

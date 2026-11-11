@@ -1,5 +1,9 @@
 {
   "permissions": {
+    "allow": [
+      "Bash(./scripts/publish-artifact.sh *)",
+      "Bash(./scripts/retry-artifact-publish.sh *)"
+    ],
     "deny": [
       "Read(./.env)",
       "Read(./.env.*)",

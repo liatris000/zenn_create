@@ -66,9 +66,11 @@ echo "  ✅ business-profile 同期完了"
 # 2. 作業ディレクトリ初期化
 # ========================================
 echo ""
-echo "[2/2] /tmp/zenn_artifact 初期化..."
+echo "[2/2] /tmp/zenn_artifact 用意..."
 
-rm -rf /tmp/zenn_artifact
+# 消さずに作るだけにする。Routine は毎回新しいコンテナで始まるので、残っているのは
+# 同じセッションの続き (resume) のときだけ。2026-11-11 に resume でこの hook が走り、
+# Day 3 が作り直した成果物 (未公開) を rm -rf で消していた
 mkdir -p /tmp/zenn_artifact/images
 
 echo "  ✅ /tmp/zenn_artifact 用意"

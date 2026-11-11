@@ -48,6 +48,14 @@ sed -e "s/{{ARTICLE_TITLE}}/${ESCAPED_TITLE}/g" \
 # 出力ディレクトリ作成
 mkdir -p "$(dirname "${OUTPUT_PATH}")"
 
+# クラウド環境 (Routine) では puppeteer 同梱の Chrome が無く、起動に失敗する
+# (2026-11-11 に "socket hang up" で 2 回失敗)。プリインストールの Chromium があればそれを使う。
+# /opt/pw-browsers/chromium はシンボリックリンクで、そのまま渡すと起動に失敗したので実体を渡す
+if [[ -z "${PUPPETEER_EXECUTABLE_PATH:-}" && -e /opt/pw-browsers/chromium ]]; then
+  PUPPETEER_EXECUTABLE_PATH="$(readlink -f /opt/pw-browsers/chromium)"
+  export PUPPETEER_EXECUTABLE_PATH
+fi
+
 # Puppeteerで撮影
 node -e "
 const puppeteer = require('puppeteer');
