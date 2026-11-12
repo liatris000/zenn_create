@@ -96,7 +96,21 @@ PAT を再発行して secret を更新する。
 - **背景**: Day 2 は 2026-08-18 以降、本文執筆を先に済ませ、成果物公開が失敗しても
   停止しない。公開失敗で 1 週間分の記事を失わないため
 - **対処**: Day 3 の Step 6.3 が自動で `scripts/retry-artifact-publish.sh` を呼ぶ。
+  一時ブランチ `artifact/*` が無くても、退避ブランチ `artifact-stash/*` があればそこから公開し直す。
   再試行も失敗した場合は Day 3 が停止し、Liatris の判断待ちになる
+- **権限判定で拒否された場合**(`[Create Public Surface]`): 2026-11-03 と 2026-11-10 に、公開スクリプトが
+  auto mode の権限判定で起動前に拒否された。一時ブランチも作られず、成果物はセッションと一緒に消えた。
+  2026-11-11 から次のようにしている
+  - 公開スクリプト 3 本(`stash-artifact.sh` / `publish-artifact.sh` / `retry-artifact-publish.sh`)を
+    `.claude/settings.json` の `permissions.allow` に入れた。**単独の Bash 呼び出しで実行したときだけ当たる**。
+    `$(...)` / `eval` / `&&` と組み合わせると権限判定に回る
+  - Day 2 は公開の前に `stash-artifact.sh` で成果物を退避ブランチ `artifact-stash/<repo-name>` に保存する
+  - それでも拒否されるなら、対話セッションで「公開してよい」と伝えて `./scripts/retry-artifact-publish.sh liatris-<slug>` を実行する
+
+### 退避ブランチ `artifact-stash/*` が残っている
+
+- 公開に成功すると、公開のワークフローが消す(routine の git プロキシは ref の削除を通さない)
+- 公開されないまま残ったものは、公開のワークフローが走ったときに 14 日以上前のものを消す
 
 ### 一時ブランチ `artifact/*` が残っている
 
