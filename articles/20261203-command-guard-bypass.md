@@ -186,7 +186,7 @@ if __name__ == "__main__":
 
 hook にするときは、標準入力の JSON から `tool_input.command` を取り出して `check` に渡します。止めるなら理由を標準エラーに出し、終了コード 2 で終えます。設定例とあわせて成果物のリポジトリに置きました。
 
-<!-- ARTIFACT_LINKS -->
+@[github](https://github.com/liatris000/liatris-20261203-command-guard-bypass)
 
 ## 結果
 
