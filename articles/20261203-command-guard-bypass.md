@@ -4,8 +4,9 @@ emoji: "🚧"
 type: "tech"
 topics: ["claudecode", "claude", "ai", "security", "shell"]
 pattern: "comparison"
-published: false
+published: true
 published_at: "2026-12-03 07:00"
+cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20261203-command-guard-bypass_thumbnail.png
 ---
 
 :::message
@@ -71,7 +72,7 @@ git commit-graph write
 4. `bash -c` と `eval` に渡した文字列、コマンド置換の中身は再帰で調べる
 5. git はグローバルオプションを飛ばしてからサブコマンドを見る
 
-解析の部分を、`guards.py` から短くまとめた版です。これだけで動き、テストケースに流すと同じ件数になります。
+解析の部分を `guards.py` から短くまとめたものです。これだけで動き、テストケースに流すと同じ件数になります。
 
 ```python
 import os
@@ -237,7 +238,7 @@ hook にするときは、標準入力の JSON から `tool_input.command` を�
 
 解析を深くすれば、このうち変数やエイリアスのいくつかは追えます。ただ、ファイルの中身や別のプログラムが何をするかは、コマンドの文字列からは分かりません。`rm` を止めても、同じ削除ができるコマンドはほかにいくらでもあります。
 
-測った結果から、置き方を次のように決めました。
+測った結果から、ガードの置き方を次のように決めました。
 
 - hook は字句解析の方式にする。正規表現は 9 件中 5 件を誤って止めるので、普段の作業を妨げる
 - 前方一致は、許可するルールには使えても、止めるルールとしては基本形しか止められない
