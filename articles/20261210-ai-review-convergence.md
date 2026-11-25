@@ -4,8 +4,9 @@ emoji: "🔁"
 type: "tech"
 topics: ["claude", "claudecode", "codereview", "ai", "python"]
 pattern: "implementation"
-published: false
+published: true
 published_at: "2026-12-10 07:00"
+cover_image: https://raw.githubusercontent.com/liatris000/zenn_create/main/images/20261210-ai-review-convergence_thumbnail.png
 ---
 
 :::message
@@ -48,7 +49,7 @@ claude -p --output-format json --tools "" --no-session-persistence < prompt.txt
 
 ## 指摘を「どこで生まれたか」で 3 つに分ける
 
-修正を毎回 git のコミットにしておくと、指摘の行を `git blame --porcelain` で辿れる。辿った先が最初のコミットなら元から有った行、それ以外なら修正で入った行と分かる。前の回と同じ指摘かどうかは、辿った先が同じコミットの ±3 行以内で、カテゴリも同じかで判定した。
+修正を毎回 git のコミットにしておくと、指摘の行を `git blame --porcelain` で辿れる。辿った先が最初のコミットなら元から有った行、それ以外なら修正で入った行と分かる。前の回と同じ指摘かどうかは、辿った先を前の回の指摘と比べて判定した。同じコミットの ±3 行以内にあり、カテゴリも同じなら再掲とする。
 
 ```python
 import subprocess
